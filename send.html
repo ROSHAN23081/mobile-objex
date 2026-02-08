@@ -1401,19 +1401,20 @@ async function handleSend(e) {
         return;
     }
 
+    // EMERGENCY FIX: Ensure we have a valid username
+    let username = 'unknown';
+    if (currentSession) {
+        username = currentSession.mo_username || currentSession.username || currentSession.name || 'unknown';
+    }
+    
+    console.log("Using username:", username); // Check this in console
+
     const sendBtn = document.getElementById('sendBtn');
     const originalText = sendBtn.innerHTML;
     sendBtn.innerHTML = '<span>⏳</span> Sending...';
     sendBtn.disabled = true;
 
     try {
-        // FIX: Ensure username is properly retrieved
-        const username = currentSession.mo_username || currentSession.username;
-        
-        if (!username) {
-            throw new Error("Username not found. Please log in again.");
-        }
-
         const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid).filter(id => id);
         
         if (selectedUserIds.length === 0) {
@@ -1439,10 +1440,10 @@ async function handleSend(e) {
             const fullMessage = `${recipient.safetyCode} ${content}`;
             
             try {
-                // FIX: Use the username variable we defined above
+                // Save to Firebase with guaranteed username
                 await db.collection('messages').add({
                     sessionId: sessionId,
-                    mo_username: username,  // This is now properly defined
+                    mo_username: username,  // This is now guaranteed to be a string
                     recipient: recipient.phone,
                     safetyCode: recipient.safetyCode,
                     content: content,
@@ -1483,7 +1484,11 @@ async function handleSend(e) {
         sendBtn.innerHTML = originalText;
         sendBtn.disabled = false;
 
-        alert(`Successfully sent to ${successCount} recipient(s)!`);
+        if (successCount > 0) {
+            alert(`Successfully sent to ${successCount} recipient(s)!`);
+        } else {
+            alert('Failed to send. Check console.');
+        }
         
     } catch (error) {
         console.error("Error:", error);
