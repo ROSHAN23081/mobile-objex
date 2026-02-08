@@ -1385,7 +1385,7 @@ function renderUsersTable() {
     // The real-time listener already does this automatically
 }
         // Handle send message
-   async function handleSend(e) {
+async function handleSend(e) {
     e.preventDefault();
     e.stopPropagation();
 
@@ -1407,16 +1407,20 @@ function renderUsersTable() {
     sendBtn.disabled = true;
 
     try {
-        // Get selected user IDs from checkboxes
-        const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid).filter(id => id);
+        // FIX: Ensure username is properly retrieved
+        const username = currentSession.mo_username || currentSession.username;
         
-        console.log("Selected user IDs:", selectedUserIds);
+        if (!username) {
+            throw new Error("Username not found. Please log in again.");
+        }
+
+        const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid).filter(id => id);
         
         if (selectedUserIds.length === 0) {
             throw new Error("No valid recipients selected");
         }
 
-        // Get user details from Firebase one by one
+        // Get recipients from Firebase
         const recipients = [];
         for (const userId of selectedUserIds) {
             const userDoc = await db.collection('users').doc(userId).get();
@@ -1425,23 +1429,20 @@ function renderUsersTable() {
             }
         }
 
-        console.log("Found recipients:", recipients.length);
-
         if (recipients.length === 0) {
-            throw new Error("Could not find recipient details");
+            throw new Error("Could not find recipients");
         }
 
-        // Send messages individually
         let successCount = 0;
         
         for (const recipient of recipients) {
             const fullMessage = `${recipient.safetyCode} ${content}`;
             
             try {
-                // Save message to Firebase
+                // FIX: Use the username variable we defined above
                 await db.collection('messages').add({
                     sessionId: sessionId,
-                    mo_username: currentSession.username,
+                    mo_username: username,  // This is now properly defined
                     recipient: recipient.phone,
                     safetyCode: recipient.safetyCode,
                     content: content,
@@ -1450,13 +1451,12 @@ function renderUsersTable() {
                     status: 'sent'
                 });
                 
-                // Update user status to 'sent'
+                // Update user status
                 await db.collection('users').doc(recipient.id).update({ 
                     status: 'sent',
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                // Add to local messages array for UI
                 messages.unshift({
                     id: Date.now().toString(),
                     recipient: recipient.phone,
@@ -1466,18 +1466,14 @@ function renderUsersTable() {
                     status: 'sent'
                 });
                 
-                console.log(`[SMS] To ${recipient.phone}: ${fullMessage}`);
                 successCount++;
                 
             } catch (innerError) {
-                console.error(`Error sending to ${recipient.phone}:`, innerError);
+                console.error("Error:", innerError);
             }
         }
         
-        // Update UI - removed the problematic renderUsersTable() call
         updateMessageHistory();
-        // The real-time listener (setupUsersListener) automatically refreshes the users list 
-        // when Firebase updates, so no manual refresh needed
         
         // Reset form
         document.getElementById('messageContent').value = '';
@@ -1487,15 +1483,10 @@ function renderUsersTable() {
         sendBtn.innerHTML = originalText;
         sendBtn.disabled = false;
 
-        if (successCount > 0) {
-            alert(`Successfully sent to ${successCount} recipient(s) with safety code prefix!`);
-        } else {
-            alert('Failed to send messages. Please check console for errors.');
-        }
+        alert(`Successfully sent to ${successCount} recipient(s)!`);
         
     } catch (error) {
-        console.error("Error sending messages:", error);
-        console.error("Error details:", error.message);
+        console.error("Error:", error);
         alert('Error: ' + error.message);
         sendBtn.innerHTML = originalText;
         sendBtn.disabled = false;
