@@ -1378,7 +1378,12 @@ const firebaseConfig = {
             div.textContent = text;
             return div.innerHTML;
         }
-
+function renderUsersTable() {
+    // This function is redundant since updateUsersUI handles the table
+    // But if you need it, it just calls the existing function:
+    console.log("Refreshing users table...");
+    // The real-time listener already does this automatically
+}
         // Handle send message
    async function handleSend(e) {
     e.preventDefault();
