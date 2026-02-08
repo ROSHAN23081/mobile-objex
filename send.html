@@ -1380,7 +1380,7 @@ const firebaseConfig = {
         }
 
         // Handle send message
-       async function handleSend(e) {
+      async function handleSend(e) {
     e.preventDefault();
     e.stopPropagation();
 
@@ -1405,13 +1405,13 @@ const firebaseConfig = {
         // Get selected user IDs from checkboxes
         const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid).filter(id => id);
         
-        console.log("Selected user IDs:", selectedUserIds); // Debug log
+        console.log("Selected user IDs:", selectedUserIds);
         
         if (selectedUserIds.length === 0) {
             throw new Error("No valid recipients selected");
         }
 
-        // Get user details from Firebase one by one (more reliable than 'in' query)
+        // Get user details from Firebase one by one
         const recipients = [];
         for (const userId of selectedUserIds) {
             const userDoc = await db.collection('users').doc(userId).get();
@@ -1420,13 +1420,13 @@ const firebaseConfig = {
             }
         }
 
-        console.log("Found recipients:", recipients.length); // Debug log
+        console.log("Found recipients:", recipients.length);
 
         if (recipients.length === 0) {
             throw new Error("Could not find recipient details");
         }
 
-        // Send messages individually (more reliable than batch for demo)
+        // Send messages individually
         let successCount = 0;
         
         for (const recipient of recipients) {
@@ -1469,9 +1469,9 @@ const firebaseConfig = {
             }
         }
         
-        // Update UI
+        // Update UI - removed renderUsersTable() call
         updateMessageHistory();
-        renderUsersTable(); // Refresh the users list to show updated status
+        // The real-time listener automatically refreshes the users list when Firebase updates
         
         // Reset form
         document.getElementById('messageContent').value = '';
