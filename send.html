@@ -1380,7 +1380,7 @@ const firebaseConfig = {
         }
 
         // Handle send message
-      async function handleSend(e) {
+   async function handleSend(e) {
     e.preventDefault();
     e.stopPropagation();
 
@@ -1469,9 +1469,10 @@ const firebaseConfig = {
             }
         }
         
-        // Update UI - removed renderUsersTable() call
+        // Update UI - removed the problematic renderUsersTable() call
         updateMessageHistory();
-        // The real-time listener automatically refreshes the users list when Firebase updates
+        // The real-time listener (setupUsersListener) automatically refreshes the users list 
+        // when Firebase updates, so no manual refresh needed
         
         // Reset form
         document.getElementById('messageContent').value = '';
