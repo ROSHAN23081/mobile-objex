@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Objex | Secure Access</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary-yellow: #F4B942;
+            --primary-yellow-hover: #E5AA33;
+            --primary-glow: rgba(244, 185, 66, 0.6);
+            --bg-dark: #0a0a0f;
+            --bg-light: #f5f5f7;
+            --card-dark: rgba(20, 20, 30, 0.8);
+            --card-light: rgba(255, 255, 255, 0.9);
+            --text-dark: #ffffff;
+            --text-light: #1a1a1f;
+            --accent-glow: rgba(244, 185, 66, 0.4);
+            --border-dark: rgba(244, 185, 66, 0.3);
+            --border-light: rgba(0, 0, 0, 0.1);
+            --input-bg-dark: rgba(10, 10, 15, 0.6);
+            --input-bg-light: rgba(245, 245, 247, 0.8);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-dark);
+            color: var(--text-dark);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body.light-mode {
+            background: var(--bg-light);
+            color: var(--text-light);
+        }
+
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(244, 185, 66, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(244, 185, 66, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
+        }
+
+        body.light-mode .bg-grid {
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--primary-yellow);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float-particle 15s infinite;
+            box-shadow: 0 0 10px var(--primary-yellow);
+        }
+
+        .particle:nth-child(1) { left: 10%; top: 90%; animation-delay: 0s; animation-duration: 12s; }
+        .particle:nth-child(2) { left: 20%; top: 80%; animation-delay: 2s; animation-duration: 18s; }
+        .particle:nth-child(3) { left: 30%; top: 95%; animation-delay: 4s; animation-duration: 14s; }
+        .particle:nth-child(4) { left: 40%; top: 85%; animation-delay: 6s; animation-duration: 16s; }
+        .particle:nth-child(5) { left: 50%; top: 90%; animation-delay: 8s; animation-duration: 13s; }
+        .particle:nth-child(6) { left: 60%; top: 88%; animation-delay: 10s; animation-duration: 17s; }
+        .particle:nth-child(7) { left: 70%; top: 92%; animation-delay: 12s; animation-duration: 15s; }
+        .particle:nth-child(8) { left: 80%; top: 87%; animation-delay: 14s; animation-duration: 19s; }
+        .particle:nth-child(9) { left: 90%; top: 93%; animation-delay: 16s; animation-duration: 11s; }
+        .particle:nth-child(10) { left: 5%; top: 85%; animation-delay: 18s; animation-duration: 20s; }
+
+        @keyframes float-particle {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        }
+
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            z-index: 0;
+            animation: orb-pulse 8s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, var(--primary-yellow) 0%, transparent 70%);
+            top: -100px;
+            left: -100px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, var(--primary-yellow) 0%, transparent 70%);
+            bottom: -50px;
+            right: -50px;
+            animation-delay: 4s;
+        }
+
+        @keyframes orb-pulse {
+            0%, 100% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.2); opacity: 0.6; }
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            border-radius: 50px;
+            padding: 8px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            color: var(--text-dark);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        body.light-mode .theme-toggle {
+            background: var(--card-light);
+            border-color: var(--border-light);
+            color: var(--text-light);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: 0 0 30px var(--accent-glow);
+            border-color: var(--primary-yellow);
+        }
+
+        .theme-icon {
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        .theme-toggle:hover .theme-icon {
+            transform: rotate(180deg);
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 420px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeIn 1s ease-out 0.2s both;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .logo-container {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #F4B942 0%, #FFD700 50%, #F4B942 100%);
+            background-size: 200% 200%;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(244, 185, 66, 0.5);
+            animation: logo-glow 3s infinite ease-in-out, gradient-shift 4s ease infinite;
+            transition: transform 0.3s ease;
+        }
+
+        .logo-icon:hover {
+            transform: scale(1.05) rotate(5deg);
+        }
+
+        @keyframes logo-glow {
+            0%, 100% { box-shadow: 0 10px 40px rgba(244, 185, 66, 0.5); }
+            50% { box-shadow: 0 10px 60px rgba(244, 185, 66, 0.8), 0 0 80px rgba(244, 185, 66, 0.4); }
+        }
+
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .shield {
+            width: 40px;
+            height: 48px;
+            background: #0a0a0f;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 65%, 50% 100%, 0% 65%, 0% 25%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .shield::after {
+            content: '';
+            position: absolute;
+            width: 50%;
+            height: 100%;
+            right: 0;
+            background: rgba(244, 185, 66, 0.3);
+            clip-path: polygon(100% 0%, 100% 100%, 0% 100%, 0% 0%);
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            animation: slideIn 0.6s ease-out 0.4s both;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .logo-text span {
+            color: var(--primary-yellow);
+            text-shadow: 0 0 20px rgba(244, 185, 66, 0.5);
+        }
+
+        .tagline {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 5px;
+            animation: slideIn 0.6s ease-out 0.6s both;
+        }
+
+        body.light-mode .tagline {
+            color: rgba(0, 0, 0, 0.5);
+        }
+
+        .login-card {
+            background: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            border-radius: 24px;
+            padding: 40px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(244, 185, 66, 0.1);
+            transition: all 0.4s ease;
+            animation: slideUp 0.6s ease-out 0.3s both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, transparent, var(--primary-yellow), transparent);
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            border-radius: 26px;
+        }
+
+        .login-card:hover::before {
+            opacity: 0.3;
+            animation: border-glow 2s linear infinite;
+        }
+
+        @keyframes border-glow {
+            0%, 100% { filter: blur(10px); }
+            50% { filter: blur(20px); }
+        }
+
+        body.light-mode .login-card {
+            background: var(--card-light);
+            border-color: var(--border-light);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            margin-bottom: 30px;
+            animation: fadeIn 0.6s ease-out 0.5s both;
+        }
+
+        .card-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lock-icon {
+            color: var(--primary-yellow);
+            animation: lock-pulse 2s infinite;
+        }
+
+        @keyframes lock-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .card-header p {
+            font-size: 14px;
+            opacity: 0.7;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+            position: relative;
+            animation: slideIn 0.6s ease-out calc(0.6s + var(--delay, 0s)) both;
+        }
+
+        .form-group:nth-child(1) { --delay: 0s; }
+        .form-group:nth-child(2) { --delay: 0.1s; }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: var(--primary-yellow);
+            transition: all 0.3s ease;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid var(--border-dark);
+            border-radius: 12px;
+            background: var(--input-bg-dark);
+            color: var(--text-dark);
+            font-size: 16px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        body.light-mode .form-input {
+            background: var(--input-bg-light);
+            color: var(--text-light);
+            border-color: var(--border-light);
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-yellow);
+            box-shadow: 0 0 0 4px var(--accent-glow), 0 0 20px var(--primary-glow);
+            transform: translateY(-2px);
+        }
+
+        .input-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus + .input-icon {
+            opacity: 1;
+            color: var(--primary-yellow);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .security-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(244, 185, 66, 0.1);
+            border: 1px solid var(--border-dark);
+            border-radius: 10px;
+            margin-bottom: 24px;
+            font-size: 12px;
+            animation: fadeIn 0.6s ease-out 0.8s both;
+            transition: all 0.3s ease;
+        }
+
+        .security-badge:hover {
+            background: rgba(244, 185, 66, 0.15);
+            transform: translateX(5px);
+        }
+
+        body.light-mode .security-badge {
+            background: rgba(244, 185, 66, 0.05);
+        }
+
+        .security-badge .icon {
+            color: var(--primary-yellow);
+            font-size: 16px;
+            animation: shield-rotate 3s ease-in-out infinite;
+        }
+
+        @keyframes shield-rotate {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(5deg); }
+            75% { transform: rotate(-5deg); }
+        }
+
+        .security-badge span {
+            opacity: 0.8;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #F4B942 0%, #E5AA33 50%, #F4B942 100%);
+            background-size: 200% 200%;
+            color: #0a0a0f;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.6s ease-out 0.9s both;
+            box-shadow: 0 4px 15px rgba(244, 185, 66, 0.3);
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(244, 185, 66, 0.5), 0 0 40px rgba(244, 185, 66, 0.3);
+            animation: gradient-shift 2s ease infinite;
+        }
+
+        .submit-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .card-footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 13px;
+            opacity: 0.6;
+            animation: fadeIn 0.6s ease-out 1s both;
+        }
+
+        .card-footer a {
+            color: var(--primary-yellow);
+            text-decoration: none;
+            font-weight: 600;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .card-footer a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary-yellow);
+            transition: width 0.3s ease;
+        }
+
+        .card-footer a:hover::after {
+            width: 100%;
+        }
+
+        .error-message {
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            color: #ff3b30;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            animation: shake 0.5s ease;
+        }
+
+        .error-message.show {
+            display: flex;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(10, 10, 15, 0.3);
+            border-radius: 50%;
+            border-top-color: #0a0a0f;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 480px) {
+            .container { width: 95%; }
+            .login-card { padding: 30px 20px; }
+            .logo-text { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon" id="themeIcon">🌙</span>
+        <span id="themeText">Dark</span>
+    </button>
+
+    <div class="container">
+        <div class="logo-section">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <div class="shield"></div>
+                </div>
+                <div class="logo-text">Mobile<span>Objex</span></div>
+                <div class="tagline">Secure Mobile Messaging</div>
+            </div>
+        </div>
+
+        <div class="login-card">
+            <div class="card-header">
+                <h2><span class="lock-icon">🔒</span> Secure Access</h2>
+                <p>Enter your credentials to access the Mobile Objex Verified Messaging Platform. All sessions are encrypted and time-limited for security.</p>
+            </div>
+
+            <div class="error-message" id="errorMsg">
+                <span>⚠️</span>
+                <span>Invalid credentials. Please try again.</span>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">MO Username</label>
+                    <div class="input-wrapper">
+                        <input type="text" class="form-input" id="username" placeholder="Enter your MO username" required autocomplete="off">
+                        <span class="input-icon">👤</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">MO Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" class="form-input" id="password" placeholder="Enter your secure password" required>
+                        <span class="input-icon">🔐</span>
+                    </div>
+                </div>
+
+                <div class="security-badge">
+                    <span class="icon">🛡️</span>
+                    <span>End-to-end encryption active • Session expires in 10 minutes</span>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    Access Platform
+                    <span class="loading" id="loading"></span>
+                </button>
+            </form>
+
+            <div class="card-footer">
+                <p>Protected by Mobile Objex Secure Infrastructure</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // FIREBASE CONFIGURATION - PASTE YOUR CONFIG HERE
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // MO User Authentication System
+        const MO_USERS = [
+            { username: 'admin', password: 'admin123', name: 'Administrator' },
+            { username: 'sales1', password: 'sales123', name: 'Sales Team' },
+            { username: 'marketer', password: 'market123', name: 'Marketing' }
+        ];
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorMsg = document.getElementById('errorMsg');
+            const loading = document.getElementById('loading');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            loading.style.display = 'inline-block';
+            submitBtn.disabled = true;
+            
+            // Simulate network delay
+            await new Promise(r => setTimeout(r, 800));
+            
+            const user = MO_USERS.find(u => u.username === username && u.password === password);
+            
+            if (user) {
+                // Create unique session per PDF specs
+                const sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+                
+                // Create session data object for Firebase
+                const sessionData = {
+                    mo_username: user.username,
+                    name: user.name,
+                    sessionId: sessionId,
+                    loginTime: firebase.firestore.Timestamp.now(),
+                    expiresAt: firebase.firestore.Timestamp.fromDate(expiresAt),
+                    active: true,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                // Generate capture URL
+                const baseUrl = window.location.origin + window.location.pathname.replace('login.html', '');
+                const captureUrl = baseUrl + 'capture.html?s=' + encodeURIComponent(sessionId);
+                
+                try {
+                    // Save to Firestore - this is the BACKEND DATABASE
+                    await db.collection('sessions').doc(sessionId).set(sessionData);
+                    
+                    // Also save to localStorage just for session reference (not data storage)
+                    localStorage.setItem('mo_current_session', JSON.stringify({
+                        ...sessionData,
+                        expiresAt: expiresAt.toISOString(),
+                        captureUrl: captureUrl
+                    }));
+                    
+                    // Redirect to send.html (marketer dashboard)
+                    window.location.href = 'send.html';
+                } catch (error) {
+                    console.error("Firebase error:", error);
+                    alert("Database connection error. Please check Firebase configuration.");
+                    loading.style.display = 'none';
+                    submitBtn.disabled = false;
+                }
+            } else {
+                errorMsg.classList.add('show');
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+                
+                setTimeout(() => {
+                    errorMsg.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Theme Toggle
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            
+            body.classList.toggle('light-mode');
+            
+            if (body.classList.contains('light-mode')) {
+                icon.textContent = '☀️';
+                text.textContent = 'Light';
+                localStorage.setItem('theme', 'light');
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = 'Dark';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+            document.body.classList.add('light-mode');
+            document.getElementById('themeIcon').textContent = '☀️';
+            document.getElementById('themeText').textContent = 'Light';
+        }
+
+        // Check if already logged in (check localStorage AND Firebase)
+        const existingSession = localStorage.getItem('mo_current_session');
+        if (existingSession) {
+            try {
+                const session = JSON.parse(existingSession);
+                if (new Date(session.expiresAt) > new Date()) {
+                    // Verify with Firebase that session is still active
+                    db.collection('sessions').doc(session.sessionId).get().then(doc => {
+                        if (doc.exists && doc.data().active) {
+                            window.location.href = 'send.html';
+                        } else {
+                            // Session invalidated in Firebase
+                            localStorage.removeItem('mo_current_session');
+                        }
+                    });
+                } else {
+                    localStorage.removeItem('mo_current_session');
+                }
+            } catch (e) {
+                localStorage.removeItem('mo_current_session');
+            }
+        }
+    </script>
+</body>
+</html>
