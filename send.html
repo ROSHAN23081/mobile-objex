@@ -1380,101 +1380,123 @@ const firebaseConfig = {
         }
 
         // Handle send message
-        async function handleSend(e) {
-            e.preventDefault();
+       async function handleSend(e) {
+    e.preventDefault();
+    e.stopPropagation();
 
-            const content = document.getElementById('messageContent').value.trim();
-            if (!content) {
-                alert('Please enter a message');
-                return;
-            }
+    const content = document.getElementById('messageContent').value.trim();
+    if (!content) {
+        alert('Please enter a message');
+        return;
+    }
 
-            const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
-            if (checkboxes.length === 0) {
-                alert('Please select at least one recipient');
-                return;
-            }
+    const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('Please select at least one recipient');
+        return;
+    }
 
-            const sendBtn = document.getElementById('sendBtn');
-            const originalText = sendBtn.innerHTML;
-            sendBtn.innerHTML = '<span>⏳</span> Sending...';
-            sendBtn.disabled = true;
+    const sendBtn = document.getElementById('sendBtn');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<span>⏳</span> Sending...';
+    sendBtn.disabled = true;
 
-            try {
-                // Get selected user IDs
-                const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid);
-                
-                // Get user details from Firebase
-                const usersSnapshot = await db.collection('users')
-                    .where(firebase.firestore.FieldPath.documentId(), 'in', selectedUserIds)
-                    .get();
-                
-                const recipients = [];
-                usersSnapshot.forEach(doc => {
-                    recipients.push({ id: doc.id, ...doc.data() });
-                });
+    try {
+        // Get selected user IDs from checkboxes
+        const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid).filter(id => id);
+        
+        console.log("Selected user IDs:", selectedUserIds); // Debug log
+        
+        if (selectedUserIds.length === 0) {
+            throw new Error("No valid recipients selected");
+        }
 
-                // Send to each recipient
-                const batch = db.batch();
-                const messagePromises = [];
-
-                for (const recipient of recipients) {
-                    const fullMessage = `${recipient.safetyCode} ${content}`;
-                    
-                    // Save message to Firebase
-                    const messageRef = db.collection('messages').doc();
-                    batch.set(messageRef, {
-                        sessionId: sessionId,
-                        mo_username: currentSession.username,
-                        recipient: recipient.phone,
-                        safetyCode: recipient.safetyCode,
-                        content: content,
-                        fullMessage: fullMessage,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                        status: 'sent'
-                    });
-                    
-                    // Update user status
-                    const userRef = db.collection('users').doc(recipient.id);
-                    batch.update(userRef, { status: 'sent' });
-                    
-                    // TODO: Integrate with your SMS Composer App here
-                    console.log(`[SMS] To ${recipient.phone}: ${fullMessage}`);
-                    
-                    messages.push({
-                        id: messageRef.id,
-                        recipient: recipient.phone,
-                        code: recipient.safetyCode,
-                        content: content,
-                        fullMessage: fullMessage,
-                        timestamp: new Date().toLocaleTimeString(),
-                        status: 'sent'
-                    });
-                }
-
-                // Commit batch
-                await batch.commit();
-                
-                // Update UI
-                updateMessageHistory();
-                
-                // Reset form
-                document.getElementById('messageContent').value = '';
-                document.getElementById('charCount').textContent = '0';
-                document.getElementById('previewText').innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> Your message will appear here...`;
-                
-                sendBtn.innerHTML = originalText;
-                sendBtn.disabled = false;
-
-                alert(`Successfully sent to ${recipients.length} recipient(s) with safety code prefix!`);
-                
-            } catch (error) {
-                console.error("Error sending messages:", error);
-                alert('Error sending messages. Please try again.');
-                sendBtn.innerHTML = originalText;
-                sendBtn.disabled = false;
+        // Get user details from Firebase one by one (more reliable than 'in' query)
+        const recipients = [];
+        for (const userId of selectedUserIds) {
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (userDoc.exists) {
+                recipients.push({ id: userDoc.id, ...userDoc.data() });
             }
         }
+
+        console.log("Found recipients:", recipients.length); // Debug log
+
+        if (recipients.length === 0) {
+            throw new Error("Could not find recipient details");
+        }
+
+        // Send messages individually (more reliable than batch for demo)
+        let successCount = 0;
+        
+        for (const recipient of recipients) {
+            const fullMessage = `${recipient.safetyCode} ${content}`;
+            
+            try {
+                // Save message to Firebase
+                await db.collection('messages').add({
+                    sessionId: sessionId,
+                    mo_username: currentSession.username,
+                    recipient: recipient.phone,
+                    safetyCode: recipient.safetyCode,
+                    content: content,
+                    fullMessage: fullMessage,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'sent'
+                });
+                
+                // Update user status to 'sent'
+                await db.collection('users').doc(recipient.id).update({ 
+                    status: 'sent',
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Add to local messages array for UI
+                messages.unshift({
+                    id: Date.now().toString(),
+                    recipient: recipient.phone,
+                    code: recipient.safetyCode,
+                    content: content,
+                    timestamp: new Date().toLocaleTimeString(),
+                    status: 'sent'
+                });
+                
+                console.log(`[SMS] To ${recipient.phone}: ${fullMessage}`);
+                successCount++;
+                
+            } catch (innerError) {
+                console.error(`Error sending to ${recipient.phone}:`, innerError);
+            }
+        }
+        
+        // Update UI
+        updateMessageHistory();
+        renderUsersTable(); // Refresh the users list to show updated status
+        
+        // Reset form
+        document.getElementById('messageContent').value = '';
+        document.getElementById('charCount').textContent = '0';
+        document.getElementById('previewText').innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> Your message will appear here...`;
+        
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+
+        if (successCount > 0) {
+            alert(`Successfully sent to ${successCount} recipient(s) with safety code prefix!`);
+        } else {
+            alert('Failed to send messages. Please check console for errors.');
+        }
+        
+    } catch (error) {
+        console.error("Error sending messages:", error);
+        console.error("Error details:", error.message);
+        alert('Error: ' + error.message);
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+    }
+    
+    return false;
+}
 
         // Update message history display
         function updateMessageHistory() {
