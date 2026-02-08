@@ -1256,21 +1256,26 @@ const firebaseConfig = {
         }
 
         // Realtime listener for users (KEY FEATURE for concurrent sessions)
-        function setupUsersListener() {
-            usersListener = db.collection('users')
-                .where('sessionId', '==', sessionId)
-                .orderBy('timestamp', 'desc')
-                .onSnapshot(snapshot => {
-                    const users = [];
-                    snapshot.forEach(doc => {
-                        users.push({ id: doc.id, ...doc.data() });
-                    });
-                    updateUsersUI(users);
-                }, error => {
-                    console.error("Error listening to users:", error);
-                });
-        }
-
+   function setupUsersListener() {
+    // Remove orderBy to avoid index requirement
+    usersListener = db.collection('users')
+        .where('sessionId', '==', sessionId)
+        .onSnapshot(snapshot => {
+            const users = [];
+            snapshot.forEach(doc => {
+                users.push({ id: doc.id, ...doc.data() });
+            });
+            // Sort manually in JavaScript instead
+            users.sort((a, b) => {
+                const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
+                const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
+                return timeB - timeA; // Descending order
+            });
+            updateUsersUI(users);
+        }, error => {
+            console.error("Error listening to users:", error);
+        });
+}
         // Update UI with user data
         function updateUsersUI(users) {
             // Update Users Tab
