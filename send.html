@@ -1565,15 +1565,38 @@ async function handleSend(e) {
 
         // Copy URL function
         function copyUrl() {
-            if (currentSession && currentSession.captureUrl) {
-                navigator.clipboard.writeText(currentSession.captureUrl).then(() => {
-                    const btn = document.querySelector('.btn-copy');
-                    const original = btn.textContent;
-                    btn.textContent = 'Copied!';
-                    setTimeout(() => btn.textContent = original, 2000);
-                });
-            }
-        }
+    // Get the URL text directly from the page
+    const urlText = document.getElementById('shortUrl').textContent =  'https://mobile-objex.it.com/capture.html?s=' + sessionId;
+            
+    // Create temporary input to copy from
+    const tempInput = document.createElement('input');
+    tempInput.value = urlText;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    tempInput.setSelectionRange(0, 99999); // For mobile
+    
+    try {
+        // Try to copy
+        document.execCommand('copy');
+        
+        // Show success
+        const btn = document.querySelector('.btn-copy');
+        btn.textContent = '✓ Copied!';
+        btn.style.background = '#34c759';
+        
+        setTimeout(() => {
+            btn.textContent = 'Copy Link';
+            btn.style.background = '';
+        }, 2000);
+        
+    } catch (err) {
+        console.error('Copy failed:', err);
+        alert('URL: ' + urlText);
+    }
+    
+    // Cleanup
+    document.body.removeChild(tempInput);
+}
 
         // Logout function - per PDF: "Delete URL and user info of this session"
         async function logout() {
