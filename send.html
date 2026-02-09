@@ -1562,23 +1562,62 @@ async function handleSend(e) {
         }
 
         // Copy URL function
-        function copyUrl() {
-    // Get the URL text directly from the page
-    const urlText = document.getElementById('shortUrl').textContent =  'https://mobile-objex.it.com/capture.html?s= ' + sessionId;
-            
-    // Create temporary input to copy from
+   function copyUrl() {
+    // Check if session is loaded
+    if (!sessionId) {
+        alert('Session not loaded yet. Please wait...');
+        return;
+    }
+    
+    // Build clean URL WITHOUT spaces
+    const urlText = 'https://mobile-objex.it.com/capture.html?s=' + sessionId;
+    
+    // Update the display to show clean URL (optional cleanup)
+    const urlDisplay = document.getElementById('shortUrl');
+    if (urlDisplay) {
+        urlDisplay.textContent = urlText;
+    }
+    
+    // Copy to clipboard using modern API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(urlText).then(() => {
+            showCopySuccess();
+        }).catch(() => {
+            // Fallback to old method
+            fallbackCopy(urlText);
+        });
+    } else {
+        fallbackCopy(urlText);
+    }
+}
+
+function fallbackCopy(text) {
     const tempInput = document.createElement('input');
-    tempInput.value = urlText;
+    tempInput.value = text;
+    tempInput.style.position = 'fixed'; // Prevent scrolling
+    tempInput.style.opacity = '0';
     document.body.appendChild(tempInput);
     tempInput.select();
     tempInput.setSelectionRange(0, 99999); // For mobile
     
     try {
-        // Try to copy
-        document.execCommand('copy');
-        
-        // Show success
-        const btn = document.querySelector('.btn-copy');
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showCopySuccess();
+        } else {
+            alert('Copy failed. URL: ' + text);
+        }
+    } catch (err) {
+        console.error('Copy error:', err);
+        alert('Please copy manually: ' + text);
+    }
+    
+    document.body.removeChild(tempInput);
+}
+
+function showCopySuccess() {
+    const btn = document.querySelector('.btn-copy');
+    if (btn) {
         btn.textContent = '✓ Copied!';
         btn.style.background = '#34c759';
         
@@ -1586,14 +1625,7 @@ async function handleSend(e) {
             btn.textContent = 'Copy Link';
             btn.style.background = '';
         }, 2000);
-        
-    } catch (err) {
-        console.error('Copy failed:', err);
-        alert('URL: ' + urlText);
     }
-    
-    // Cleanup
-    document.body.removeChild(tempInput);
 }
 
         // Logout function - per PDF: "Delete URL and user info of this session"
