@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Objex | The Trust Infrastructure for Mobile Messaging</title>
+    <meta name="description" content="AI-Driven Mobile Trust. Stop scams before they reach consumers with the MO Verified Safety Mark.">
+    <style>
+        :root {
+            --primary-yellow: #F4B942;
+            --primary-yellow-hover: #E5AA33;
+            --primary-glow: rgba(244, 185, 66, 0.6);
+            --bg-dark: #050508;
+            --bg-light: #f5f5f7;
+            --bg-card-dark: rgba(15, 15, 25, 0.7);
+            --bg-card-light: rgba(255, 255, 255, 0.95);
+            --text-primary-dark: #ffffff;
+            --text-primary-light: #1a1a1f;
+            --text-secondary-dark: rgba(255, 255, 255, 0.6);
+            --text-secondary-light: rgba(0, 0, 0, 0.6);
+            --border-glow: rgba(244, 185, 66, 0.3);
+            --border-light: rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary-dark);
+            overflow-x: hidden;
+            line-height: 1.6;
+            transition: all 0.4s ease;
+        }
+
+        body.light-mode {
+            background: var(--bg-light);
+            color: var(--text-primary-light);
+        }
+
+        /* Canvas Background for Interactive Network */
+        #network-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        body.light-mode #network-canvas {
+            opacity: 0.3;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            background: linear-gradient(to bottom, rgba(5,5,8,0.9), transparent);
+            backdrop-filter: blur(10px);
+            transition: all 0.4s ease;
+        }
+
+        body.light-mode nav {
+            background: linear-gradient(to bottom, rgba(255,255,255,0.9), transparent);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 800;
+            text-decoration: none;
+            color: var(--text-primary-dark);
+            transition: all 0.3s;
+        }
+
+        body.light-mode .nav-logo {
+            color: var(--text-primary-light);
+        }
+
+        .logo-mark {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary-yellow), #FFD700);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px var(--primary-glow);
+            animation: pulse-glow 3s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px var(--primary-glow); }
+            50% { box-shadow: 0 0 40px var(--primary-glow), 0 0 60px rgba(244, 185, 66, 0.3); }
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--text-secondary-dark);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        body.light-mode .nav-link {
+            color: var(--text-secondary-light);
+        }
+
+        .nav-link:hover {
+            color: var(--primary-yellow);
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary-yellow);
+            transition: width 0.3s;
+            box-shadow: 0 0 10px var(--primary-yellow);
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            background: var(--bg-card-dark);
+            border: 1px solid var(--border-glow);
+            border-radius: 50px;
+            padding: 8px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            color: var(--text-primary-dark);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            margin-left: 20px;
+        }
+
+        body.light-mode .theme-toggle {
+            background: var(--bg-card-light);
+            border-color: var(--border-light);
+            color: var(--text-primary-light);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: 0 0 30px var(--primary-glow);
+            border-color: var(--primary-yellow);
+        }
+
+        .theme-icon {
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        .theme-toggle:hover .theme-icon {
+            transform: rotate(180deg);
+        }
+
+        .btn-access {
+            background: transparent;
+            border: 1px solid var(--primary-yellow);
+            color: var(--primary-yellow);
+            padding: 10px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-access:hover {
+            background: var(--primary-yellow);
+            color: #000;
+            box-shadow: 0 0 30px var(--primary-glow);
+            transform: translateY(-2px);
+        }
+
+        /* Hero Section - Cinematic */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+            padding: 120px 50px 80px;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(244, 185, 66, 0.1);
+            border: 1px solid var(--border-glow);
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 12px;
+            color: var(--primary-yellow);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 30px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        body.light-mode .hero-badge {
+            background: rgba(244, 185, 66, 0.15);
+            border-color: var(--primary-yellow);
+        }
+
+        .hero h1 {
+            font-size: 64px;
+            line-height: 1.1;
+            font-weight: 800;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #fff 0%, var(--primary-yellow) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        body.light-mode .hero h1 {
+            background: linear-gradient(135deg, #1a1a1f 0%, var(--primary-yellow) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-description {
+            font-size: 20px;
+            color: var(--text-secondary-dark);
+            max-width: 540px;
+            margin-bottom: 40px;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        body.light-mode .hero-description {
+            color: var(--text-secondary-light);
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 20px;
+            animation: fadeInUp 0.8s ease-out 0.6s both;
+        }
+
+        .btn-primary {
+            background: var(--primary-yellow);
+            color: #000;
+            padding: 16px 32px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(244, 185, 66, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(244, 185, 66, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary-dark);
+            padding: 16px 32px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s;
+        }
+
+        body.light-mode .btn-secondary {
+            color: var(--text-primary-light);
+            border-color: rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary-yellow);
+            color: var(--primary-yellow);
+        }
+
+        /* Stats Ticker */
+        .stats-ticker {
+            display: flex;
+            gap: 60px;
+            margin-top: 60px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            animation: fadeInUp 0.8s ease-out 0.8s both;
+        }
+
+        body.light-mode .stats-ticker {
+            border-top-color: rgba(0,0,0,0.1);
+        }
+
+        .stat-item h3 {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--primary-yellow);
+            text-shadow: 0 0 20px rgba(244, 185, 66, 0.3);
+        }
+
+        .stat-item p {
+            font-size: 14px;
+            color: var(--text-secondary-dark);
+            margin-top: 5px;
+        }
+
+        body.light-mode .stat-item p {
+            color: var(--text-secondary-light);
+        }
+
+        /* 3D Visualization Container */
+        .hero-visual {
+            position: relative;
+            height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 1s ease-out 0.5s both;
+        }
+
+        .shield-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+
+        .main-shield {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 240px;
+            background: linear-gradient(135deg, rgba(244, 185, 66, 0.2), rgba(244, 185, 66, 0.05));
+            border: 2px solid var(--primary-yellow);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 65%, 50% 100%, 0% 65%, 0% 25%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+            box-shadow: 0 0 60px var(--primary-glow);
+            animation: float 6s ease-in-out infinite;
+            backdrop-filter: blur(10px);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+            50% { transform: translate(-50%, -50%) translateY(-20px); }
+        }
+
+        .orbit-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 1px solid rgba(244, 185, 66, 0.2);
+            border-radius: 50%;
+            animation: rotate 20s linear infinite;
+        }
+
+        .orbit-ring:nth-child(1) { width: 300px; height: 300px; }
+        .orbit-ring:nth-child(2) { width: 350px; height: 350px; animation-direction: reverse; animation-duration: 25s; }
+        .orbit-ring:nth-child(3) { width: 400px; height: 400px; animation-duration: 30s; }
+
+        @keyframes rotate {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .orbit-dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--primary-yellow);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--primary-yellow);
+        }
+
+        /* Problem Section - Dark Reality */
+        .problem-section {
+            padding: 120px 50px;
+            position: relative;
+            z-index: 10;
+            background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.5));
+        }
+
+        body.light-mode .problem-section {
+            background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.05));
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto 80px;
+        }
+
+        .section-tag {
+            color: #ff3b30;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .section-title {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .problem-card {
+            background: var(--bg-card-dark);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.4s;
+            backdrop-filter: blur(10px);
+        }
+
+        body.light-mode .problem-card {
+            background: var(--bg-card-light);
+            border-color: rgba(255, 59, 48, 0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .problem-card:hover {
+            transform: translateY(-10px);
+            border-color: #ff3b30;
+            box-shadow: 0 20px 40px rgba(255, 59, 48, 0.2);
+        }
+
+        .problem-stat {
+            font-size: 56px;
+            font-weight: 800;
+            color: #ff3b30;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 59, 48, 0.3);
+        }
+
+        .problem-label {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .problem-desc {
+            font-size: 14px;
+            color: var(--text-secondary-dark);
+        }
+
+        body.light-mode .problem-desc {
+            color: var(--text-secondary-light);
+        }
+
+        /* Solution Section - The Shield */
+        .solution-section {
+            padding: 120px 50px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .solution-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .solution-tag {
+            color: var(--primary-yellow);
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .solution-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .solution-card {
+            background: var(--bg-card-dark);
+            border: 1px solid rgba(244, 185, 66, 0.2);
+            border-radius: 20px;
+            padding: 40px;
+            display: flex;
+            gap: 24px;
+            transition: all 0.4s;
+            backdrop-filter: blur(10px);
+        }
+
+        body.light-mode .solution-card {
+            background: var(--bg-card-light);
+            border-color: rgba(244, 185, 66, 0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .solution-card:hover {
+            border-color: var(--primary-yellow);
+            transform: translateX(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        body.light-mode .solution-card:hover {
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .solution-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(244, 185, 66, 0.1);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+
+        .solution-content h3 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: var(--primary-yellow);
+        }
+
+        .solution-content p {
+            color: var(--text-secondary-dark);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        body.light-mode .solution-content p {
+            color: var(--text-secondary-light);
+        }
+
+        /* How It Works - Timeline */
+        .process-section {
+            padding: 120px 50px;
+            position: relative;
+            z-index: 10;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+        }
+
+        body.light-mode .process-section {
+            background: linear-gradient(to bottom, rgba(0,0,0,0.05), transparent);
+        }
+
+        .timeline {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--primary-yellow), transparent);
+            transform: translateX(-50%);
+        }
+
+        .timeline-item {
+            display: flex;
+            justify-content: flex-end;
+            padding-right: 50%;
+            position: relative;
+            margin-bottom: 80px;
+        }
+
+        .timeline-item:nth-child(even) {
+            justify-content: flex-start;
+            padding-right: 0;
+            padding-left: 50%;
+        }
+
+        .timeline-content {
+            max-width: 400px;
+            background: var(--bg-card-dark);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 30px;
+            position: relative;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+
+        body.light-mode .timeline-content {
+            background: var(--bg-card-light);
+            border-color: var(--border-light);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .timeline-content:hover {
+            transform: scale(1.05);
+            border-color: var(--primary-yellow);
+            box-shadow: 0 0 30px rgba(244, 185, 66, 0.2);
+        }
+
+        .timeline-number {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: var(--primary-yellow);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 20px;
+            color: #000;
+            top: 30px;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .timeline-item:nth-child(odd) .timeline-number {
+            right: -25px;
+            transform: translateX(50%);
+        }
+
+        .timeline-item:nth-child(even) .timeline-number {
+            left: -25px;
+            transform: translateX(-50%);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 150px 50px;
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .cta-box {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--bg-card-dark);
+            border: 1px solid var(--border-glow);
+            border-radius: 24px;
+            padding: 60px;
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        body.light-mode .cta-box {
+            background: var(--bg-card-light);
+            border-color: var(--border-light);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+        }
+
+        .cta-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(244, 185, 66, 0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-title {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 20px;
+        }
+
+        .cta-text {
+            font-size: 18px;
+            color: var(--text-secondary-dark);
+            margin-bottom: 40px;
+        }
+
+        body.light-mode .cta-text {
+            color: var(--text-secondary-light);
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 50px 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            color: var(--text-secondary-dark);
+            position: relative;
+            z-index: 10;
+        }
+
+        body.light-mode footer {
+            border-top-color: rgba(0,0,0,0.1);
+            color: var(--text-secondary-light);
+        }
+
+        .footer-logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary-dark);
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        body.light-mode .footer-logo {
+            color: var(--text-primary-light);
+        }
+
+        .footer-logo span {
+            color: var(--primary-yellow);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 968px) {
+            .hero-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .hero h1 {
+                font-size: 42px;
+            }
+
+            .hero-description {
+                margin: 0 auto 40px;
+            }
+
+            .hero-visual {
+                display: none;
+            }
+
+            .problem-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .solution-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .timeline::before {
+                left: 30px;
+            }
+
+            .timeline-item,
+            .timeline-item:nth-child(even) {
+                padding-left: 80px;
+                padding-right: 0;
+                justify-content: flex-start;
+            }
+
+            .timeline-number {
+                left: 30px !important;
+                right: auto !important;
+                transform: translateX(-50%) !important;
+            }
+
+            nav {
+                padding: 15px 20px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+            
+            .theme-toggle {
+                margin-left: auto;
+                margin-right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="network-canvas"></canvas>
+
+    <nav>
+        <a href="#" class="nav-logo">
+            <div class="logo-mark">
+                <div style="width: 24px; height: 28px; background: #000; clip-path: polygon(50% 0%, 100% 25%, 100% 65%, 50% 100%, 0% 65%, 0% 25%); display: flex; align-items: center; justify-content: center;">
+                    <span style="color: var(--primary-yellow); font-size: 16px;">✓</span>
+                </div>
+            </div>
+            Mobile<span style="color: var(--primary-yellow);">Objex</span>
+        </a>
+        <div class="nav-links">
+            <a href="#problem" class="nav-link">The Problem</a>
+            <a href="#solution" class="nav-link">Our Solution</a>
+            <a href="#process" class="nav-link">How It Works</a>
+            <a href="login.html" class="btn-access">Access Platform</a>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span class="theme-icon" id="themeIcon">🌙</span>
+                <span id="themeText">Dark</span>
+            </button>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-text">
+                <div class="hero-badge">
+                    <span>🛡️</span>
+                    <span>The First Verified Safety Mark for Mobile</span>
+                </div>
+                <h1>The Trust Infrastructure for Mobile Messaging</h1>
+                <p class="hero-description">
+                    Stop scams before they reach consumers. Mobile Objex verifies legitimate messages with the MO Safety Mark, creating a fraud-free ecosystem for SMS, RCS, Email, and App Notifications.
+                </p>
+                <div class="hero-cta">
+                    <a href="login.html" class="btn-primary">Access Secure Platform</a>
+                    <a href="#solution" class="btn-secondary">Explore Technology</a>
+                </div>
+                
+                <div class="stats-ticker">
+                    <div class="stat-item">
+                        <h3 class="counter" data-target="30">0</h3>
+                        <p>% of US consumers<br>scammed annually</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>$<span class="counter" data-target="7">0</span>T+</h3>
+                        <p>Lost to fraud<br>worldwide</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3 class="counter" data-target="99">0</h3>
+                        <p>.7% Verification<br>Accuracy</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hero-visual">
+                <div class="shield-container">
+                    <div class="orbit-ring"><div class="orbit-dot" style="top: -4px; left: 50%; transform: translateX(-50%);"></div></div>
+                    <div class="orbit-ring"><div class="orbit-dot" style="bottom: -4px; left: 50%; transform: translateX(-50%);"></div></div>
+                    <div class="orbit-ring"><div class="orbit-dot" style="top: 50%; right: -4px; transform: translateY(-50%);"></div></div>
+                    <div class="main-shield">🛡️</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="problem-section" id="problem">
+        <div class="section-header">
+            <span class="section-tag">The Crisis</span>
+            <h2 class="section-title">Mobile Messaging is Under Attack</h2>
+            <p style="color: var(--text-secondary-dark); font-size: 20px; max-width: 600px; margin: 0 auto;">
+                Fraudsters exploit the trust consumers place in mobile communications. Every unverified message is a potential threat.
+            </p>
+        </div>
+        
+        <div class="problem-grid">
+            <div class="problem-card">
+                <div class="problem-stat">30%</div>
+                <div class="problem-label">Of US Consumers</div>
+                <div class="problem-desc">Report being scammed via mobile messages annually. The most vulnerable point of contact.</div>
+            </div>
+            <div class="problem-card">
+                <div class="problem-stat">$7T+</div>
+                <div class="problem-label">Global Fraud Loss</div>
+                <div class="problem-desc">Projected annual losses to fraud worldwide. Mobile scams are the fastest growing vector.</div>
+            </div>
+            <div class="problem-card">
+                <div class="problem-stat">76%</div>
+                <div class="problem-label">Of Scams Start</div>
+                <div class="problem-desc">With a simple mobile message. Text, email, or app notification - the entry point is always mobile.</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="solution-section" id="solution">
+        <div class="solution-header">
+            <span class="solution-tag">The Solution</span>
+            <h2 class="section-title">Introducing the MO Verified Safety Mark</h2>
+            <p style="color: var(--text-secondary-dark); font-size: 20px; max-width: 700px; margin: 0 auto;">
+                The first cooperative verification platform that lets consumers know: <strong style="color: var(--primary-yellow);">This message is safe.</strong>
+            </p>
+        </div>
+
+        <div class="solution-grid">
+            <div class="solution-card">
+                <div class="solution-icon">🛡️</div>
+                <div class="solution-content">
+                    <h3>Verified Safety Mark</h3>
+                    <p>A visible badge of trust. When consumers see the MO mark, they know the message has been verified by our AI and cooperative data platform. Instant recognition, instant trust.</p>
+                </div>
+            </div>
+            
+            <div class="solution-card">
+                <div class="solution-icon">🔐</div>
+                <div class="solution-content">
+                    <h3>Clean Room Architecture</h3>
+                    <p>Your data never mixes with others. Our API-first approach deduplicates, validates, and anonymizes data before it enters the cooperative. Privacy by design, not by promise.</p>
+                </div>
+            </div>
+            
+            <div class="solution-card">
+                <div class="solution-icon">🤖</div>
+                <div class="solution-content">
+                    <h3>Multi-Agent AI Analysis</h3>
+                    <p>Four specialized AI analysts examine every message: Pattern detection, behavioral analysis, sender verification, and content scoring. Bias is eliminated through parallel processing.</p>
+                </div>
+            </div>
+            
+            <div class="solution-card">
+                <div class="solution-icon">📊</div>
+                <div class="solution-content">
+                    <h3>Cooperative Intelligence</h3>
+                    <p>Brands anonymously share fraud patterns, creating a real-time shield that learns faster than scammers. One attack detected protects the entire network instantly.</p>
+                </div>
+            </div>
+            
+            <div class="solution-card">
+                <div class="solution-icon">🎮</div>
+                <div class="solution-content">
+                    <h3>Gamified Education</h3>
+                    <p>Our "It's a Scam" mobile game and TV show educate consumers while they engage. Turn security awareness into entertainment. Trusted by schools and enterprises.</p>
+                </div>
+            </div>
+            
+            <div class="solution-card">
+                <div class="solution-icon">📡</div>
+                <div class="solution-content">
+                    <h3>Omni-Channel Coverage</h3>
+                    <p>One platform, every channel. SMS, RCS, Email, App Push Notifications, and Social DMs - all verified under one safety standard. Consistent trust everywhere.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="process-section" id="process">
+        <div class="section-header" style="margin-bottom: 80px;">
+            <span class="solution-tag">How It Works</span>
+            <h2 class="section-title">From Upload to Verified in Seconds</h2>
+        </div>
+
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <h3 style="font-size: 24px; margin-bottom: 10px; color: var(--primary-yellow);">Upload</h3>
+                    <p style="color: var(--text-secondary-dark);">Brand uploads campaign data via secure API. Data is immediately anonymized and encrypted. No PII is ever stored.</p>
+                </div>
+                <div class="timeline-number">1</div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <h3 style="font-size: 24px; margin-bottom: 10px; color: var(--primary-yellow);">Scan</h3>
+                    <p style="color: var(--text-secondary-dark);">Multi-agent AI analyzes patterns, checks against known fraud vectors, and validates sender reputation across the cooperative network.</p>
+                </div>
+                <div class="timeline-number">2</div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <h3 style="font-size: 24px; margin-bottom: 10px; color: var(--primary-yellow);">Verify</h3>
+                    <p style="color: var(--text-secondary-dark);">Approved messages receive the MO Verified Safety Mark. Failed messages are quarantined for review with detailed threat analysis.</p>
+                </div>
+                <div class="timeline-number">3</div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <h3 style="font-size: 24px; margin-bottom: 10px; color: var(--primary-yellow);">Deliver</h3>
+                    <p style="color: var(--text-secondary-dark);">Verified messages reach consumers with the Safety Mark displayed. Real-time delivery confirmation and engagement tracking.</p>
+                </div>
+                <div class="timeline-number">4</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="cta-box">
+            <div class="cta-content">
+                <h2 class="cta-title">Ready to Eliminate Mobile Fraud?</h2>
+                <p class="cta-text">
+                    Join leading brands in telecom, retail, fintech, healthcare, and logistics who trust Mobile Objex to protect their mobile communications and rebuild consumer trust.
+                </p>
+                <a href="login.html" class="btn-primary" style="display: inline-block; padding: 18px 40px; font-size: 18px;">
+                    Access Secure Platform
+                </a>
+                <p style="margin-top: 20px; font-size: 14px; color: var(--text-secondary-dark);">
+                    Protected by Mobile Objex Secure Infrastructure • End-to-end encrypted
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-logo">Mobile<span>Objex</span></div>
+        <p style="margin-bottom: 10px;">AI-Driven Mobile Trust Platform</p>
+        <p style="font-size: 12px;">&copy; 2026 Mobile Objex. All rights reserved. | Fraud-Free Mobile Communications</p>
+    </footer>
+
+    <script>
+        // Theme Toggle Functionality
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            
+            body.classList.toggle('light-mode');
+            
+            if (body.classList.contains('light-mode')) {
+                icon.textContent = '☀️';
+                text.textContent = 'Light';
+                localStorage.setItem('theme', 'light');
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = 'Dark';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+            document.body.classList.add('light-mode');
+            document.getElementById('themeIcon').textContent = '☀️';
+            document.getElementById('themeText').textContent = 'Light';
+        }
+
+        // Interactive Network Background
+        const canvas = document.getElementById('network-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        const particles = [];
+        const particleCount = 80;
+        
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2 + 1;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+            
+            draw() {
+                ctx.fillStyle = 'rgba(244, 185, 66, 0.5)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+        
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                
+                for (let j = i; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 150) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(244, 185, 66, ${0.2 - distance/750})`;
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Counter Animation
+        const counters = document.querySelectorAll('.counter');
+        const speed = 200;
+        
+        const animateCounters = () => {
+            counters.forEach(counter => {
+                const target = +counter.getAttribute('data-target');
+                const count = +counter.innerText;
+                const inc = target / speed;
+                
+                if (count < target) {
+                    counter.innerText = Math.ceil(count + inc);
+                    setTimeout(animateCounters, 20);
+                } else {
+                    counter.innerText = target;
+                }
+            });
+        };
+        
+        // Trigger counters when in view
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    animateCounters();
+                    observer.unobserve(entry.target);
+                }
+            });
+        });
+        
+        observer.observe(document.querySelector('.stats-ticker'));
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
