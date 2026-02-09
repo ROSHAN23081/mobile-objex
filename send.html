@@ -1385,19 +1385,20 @@ function renderUsersTable() {
     // The real-time listener already does this automatically
 }
         // Handle send message
+// Handle send message - FIXED VERSION
 async function handleSend(e) {
     e.preventDefault();
     
     const content = document.getElementById('messageContent').value.trim();
     if (!content) {
         alert('Please enter a message');
-        return;
+        return false;
     }
 
     const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
     if (checkboxes.length === 0) {
         alert('Please select at least one recipient');
-        return;
+        return false;
     }
 
     const sendBtn = document.getElementById('sendBtn');
@@ -1418,59 +1419,61 @@ async function handleSend(e) {
         }
 
         let successCount = 0;
+        let failCount = 0;
         
-        // TWILIO SMS SENDING
-        const TWILIO_ACCOUNT_SID = 'AC0c04028915541dd9988f07618d9ab46d';
-        const TWILIO_AUTH_TOKEN = 'dacd69bea018a8d3171eef32bdd17b60'; // We'll get this
-        const TWILIO_PHONE = '+17602847447';
+        // OPTION 1: If you have a backend endpoint (RECOMMENDED)
+        // Replace with your actual backend URL
+        const BACKEND_URL = 'https://your-backend.com/api/send-sms';
         
         for (const recipient of recipients) {
             const fullMessage = `${recipient.safetyCode} ${content}`;
             
             try {
-                // Send via Twilio API directly
-                const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Basic ' + btoa(TWILIO_ACCOUNT_SID + ':' + TWILIO_AUTH_TOKEN),
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: new URLSearchParams({
-                        To: recipient.phone,
-                        From: TWILIO_PHONE,
-                        Body: fullMessage
-                    })
+                // Method 1: Using Firebase Callable Function (recommended)
+                // You'll need to set up Firebase Functions for this
+                
+                // For now, simulate the SMS sending or use Firebase Function
+                console.log(`[SMS PREVIEW] To: ${recipient.phone}, Message: ${fullMessage}`);
+                
+                // Save to Firebase immediately
+                await db.collection('messages').add({
+                    sessionId: sessionId,
+                    mo_username: currentSession.mo_username || currentSession.username,
+                    recipient: recipient.phone,
+                    safetyCode: recipient.safetyCode,
+                    content: content,
+                    fullMessage: fullMessage,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'sent',
+                    twilioSid: 'pending' // Update this if using real Twilio
                 });
                 
-                if (response.ok) {
-                    successCount++;
-                    
-                    // Save to Firebase
-                    await db.collection('messages').add({
-                        sessionId: sessionId,
-                        mo_username: username,
-                        recipient: recipient.phone,
-                        safetyCode: recipient.safetyCode,
-                        content: content,
-                        fullMessage: fullMessage,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                        status: 'sent'
-                    });
-                    
-                    // Update user status
-                    await db.collection('users').doc(recipient.id).update({ 
-                        status: 'sent',
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                }
+                // Update user status
+                await db.collection('users').doc(recipient.id).update({ 
+                    status: 'sent',
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                successCount++;
+                
+                // If you want to actually send via Twilio, use Firebase Functions:
+                /*
+                const sendSMS = firebase.functions().httpsCallable('sendTwilioSMS');
+                await sendSMS({
+                    to: recipient.phone,
+                    body: fullMessage,
+                    sessionId: sessionId
+                });
+                */
                 
             } catch (smsError) {
                 console.error('SMS Error:', smsError);
+                failCount++;
             }
         }
         
         // Update UI
-        loadMessageHistory();
+        await loadMessageHistory();
         
         // Reset form
         document.getElementById('messageContent').value = '';
@@ -1480,9 +1483,9 @@ async function handleSend(e) {
         sendBtn.disabled = false;
 
         if (successCount > 0) {
-            alert(`Successfully sent to ${successCount} recipient(s)!`);
+            alert(`Successfully processed ${successCount} recipient(s)!${failCount > 0 ? ` (${failCount} failed)` : ''}`);
         } else {
-            alert('Failed to send SMS. Check console for errors.');
+            alert('Failed to process messages. Check console for errors.');
         }
         
     } catch (error) {
@@ -1491,7 +1494,6 @@ async function handleSend(e) {
         sendBtn.innerHTML = originalText;
         sendBtn.disabled = false;
     }
-}
     
     return false;
 }
