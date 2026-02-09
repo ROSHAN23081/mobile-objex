@@ -1560,58 +1560,10 @@ async function handleSend(e) {
             }
         }
         
-// CORRECT - Just build the string
-function copyUrl() {
-    const urlText = 'https://mobile-objex.it.com/capture.html?s=' + sessionId;
-    function copyUrl() {
-    // Build the URL string
-    const urlText = 'https://mobile-objex.it.com/capture.html?s=' + sessionId;
-    
-    // Try modern clipboard API first
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(urlText).then(() => {
-            const btn = document.querySelector('.btn-copy');
-            btn.textContent = '✓ Copied!';
-            btn.style.background = '#34c759';
-            
-            setTimeout(() => {
-                btn.textContent = 'Copy Link';
-                btn.style.background = '';
-            }, 2000);
-        }).catch(() => {
-            // Fallback to old method
-            fallbackCopy(urlText);
-        });
-    } else {
-        fallbackCopy(urlText);
-    }
-}
-
-function fallbackCopy(text) {
-    const tempInput = document.createElement('input');
-    tempInput.value = text;
-    document.body.appendChild(tempInput);
-    tempInput.select();
-    tempInput.setSelectionRange(0, 99999);
-    
-    try {
-        document.execCommand('copy');
-        const btn = document.querySelector('.btn-copy');
-        btn.textContent = '✓ Copied!';
-        btn.style.background = '#34c759';
-        
-        setTimeout(() => {
-            btn.textContent = 'Copy Link';
-            btn.style.background = '';
-        }, 2000);
-    } catch (err) {
-        console.error('Copy failed:', err);
-        alert('URL: ' + text);
-    }
-    
-    document.body.removeChild(tempInput);
-}
-    
+        // Copy URL function
+        function copyUrl() {
+    // Get the URL text directly from the page
+    const urlText = document.getElementById('shortUrl').textContent =  'https://mobile-objex.it.com/capture.html?s= ' + sessionId;    
     // Copy to clipboard
     navigator.clipboard.writeText(urlText).then(() => {
         const btn = document.querySelector('.btn-copy');
