@@ -1402,97 +1402,70 @@ async function handleSend(e) {
     }
 
     const sendBtn = document.getElementById('sendBtn');
-    const originalText = sendBtn.innerHTML;
     sendBtn.innerHTML = '<span>⏳</span> Sending...';
     sendBtn.disabled = true;
 
-    try {
-        const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid);
-        
-        // Get recipients from Firebase
-        const recipients = [];
-        for (const userId of selectedUserIds) {
-            const userDoc = await db.collection('users').doc(userId).get();
-            if (userDoc.exists) {
-                recipients.push({ id: userDoc.id, ...userDoc.data() });
-            }
-        }
-
-        let successCount = 0;
-        let failCount = 0;
-        
-        // OPTION 1: If you have a backend endpoint (RECOMMENDED)
-        // Replace with your actual backend URL
-        const BACKEND_URL = 'https://your-backend.com/api/send-sms';
-        
-        for (const recipient of recipients) {
-            const fullMessage = `${recipient.safetyCode} ${content}`;
+    const TEXTBELT_KEY = 'b88f3bc5c28e511ec230fa8b46c2289634e0604dIpPA4CpHdZu853Iddph9p2gI1';
+    const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid);
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const userId of selectedUserIds) {
+        const userDoc = await db.collection('users').doc(userId).get();
+        if (userDoc.exists) {
+            const user = userDoc.data();
+            const fullMessage = `${user.safetyCode} ${content}`;
             
             try {
-                // Method 1: Using Firebase Callable Function (recommended)
-                // You'll need to set up Firebase Functions for this
-                
-                // For now, simulate the SMS sending or use Firebase Function
-                console.log(`[SMS PREVIEW] To: ${recipient.phone}, Message: ${fullMessage}`);
-                
-                // Save to Firebase immediately
-                await db.collection('messages').add({
-                    sessionId: sessionId,
-                    mo_username: currentSession.mo_username || currentSession.username,
-                    recipient: recipient.phone,
-                    safetyCode: recipient.safetyCode,
-                    content: content,
-                    fullMessage: fullMessage,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    status: 'sent',
-                    twilioSid: 'pending' // Update this if using real Twilio
+                const response = await fetch('https://textbelt.com/text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `phone=${encodeURIComponent(user.phone)}&message=${encodeURIComponent(fullMessage)}&key=${TEXTBELT_KEY}`
                 });
                 
-                // Update user status
-                await db.collection('users').doc(recipient.id).update({ 
-                    status: 'sent',
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                const result = await response.json();
                 
-                successCount++;
+                if (result.success) {
+                    await db.collection('messages').add({
+                        sessionId: sessionId,
+                        mo_username: currentSession.mo_username || currentSession.username,
+                        recipient: user.phone,
+                        safetyCode: user.safetyCode,
+                        content: content,
+                        fullMessage: fullMessage,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: 'sent',
+                        textId: result.textId
+                    });
+                    
+                    await db.collection('users').doc(userId).update({ 
+                        status: 'sent',
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    successCount++;
+                } else {
+                    console.error('SMS failed:', result.error);
+                    failCount++;
+                }
                 
-                // If you want to actually send via Twilio, use Firebase Functions:
-                /*
-                const sendSMS = firebase.functions().httpsCallable('sendTwilioSMS');
-                await sendSMS({
-                    to: recipient.phone,
-                    body: fullMessage,
-                    sessionId: sessionId
-                });
-                */
+                await new Promise(r => setTimeout(r, 1000));
                 
-            } catch (smsError) {
-                console.error('SMS Error:', smsError);
+            } catch (error) {
+                console.error('Error:', error);
                 failCount++;
             }
         }
-        
-        // Update UI
-        await loadMessageHistory();
-        
-        // Reset form
-        document.getElementById('messageContent').value = '';
-        document.getElementById('charCount').textContent = '0';
-        
-        sendBtn.innerHTML = originalText;
-        sendBtn.disabled = false;
-
-        if (successCount > 0) {
-            alert(`Successfully processed ${successCount} recipient(s)!${failCount > 0 ? ` (${failCount} failed)` : ''}`);
-        } else {
-            alert('Failed to process messages. Check console for errors.');
-        }
-        
-    } catch (error) {
-        console.error("Error:", error);
-        alert('Error: ' + error.message);
-        sendBtn.innerHTML = originalText;
-        sendBtn.disabled = false;
+    }
+    
+    await loadMessageHistory();
+    sendBtn.innerHTML = '<span>🚀</span> Send Secure Message';
+    sendBtn.disabled = false;
+    
+    if (successCount > 0) {
+        alert(`✅ Sent to ${successCount} people! ${failCount > 0 ? `(${failCount} failed)` : ''}`);
+    } else {
+        alert('❌ Failed. Check console.');
     }
     
     return false;
