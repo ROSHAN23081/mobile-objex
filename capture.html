@@ -657,25 +657,21 @@ const firebaseConfig = {
         }
 
         // Send confirmation SMS - integrates with your existing SMS Composer App
-        async function sendConfirmationSMS(phone, safetyCode) {
-            const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
-            
-            console.log(`[SMS] Sending to ${phone}: ${message}`);
-            
-            // TODO: Replace with your actual SMS Composer App API endpoint
-            // Example:
-            /*
-            await fetch('https://your-sms-composer-app.com/api/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    to: phone,
-                    message: message,
-                    sessionId: sessionId
-                })
-            });
-            */
-        }
+  async function sendConfirmationSMS(phone, safetyCode) {
+    const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
+    const TEXTBELT_KEY = 'b88f3bc5c28e511ec230fa8b46c2289634e0604dIpPA4CpHdZu853Iddph9p2gI1';
+    
+    try {
+        await fetch('https://textbelt.com/text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `phone=${encodeURIComponent(phone)}&message=${encodeURIComponent(message)}&key=${TEXTBELT_KEY}`
+        });
+        console.log('Confirmation SMS sent');
+    } catch (error) {
+        console.error('SMS error:', error);
+    }
+}
 
         // Initialize
         validateSession().then(valid => {
