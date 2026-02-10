@@ -1404,7 +1404,8 @@ async function handleSend(e) {
     const sendBtn = document.getElementById('sendBtn');
     sendBtn.innerHTML = '<span>⏳</span> Sending...';
     sendBtn.disabled = true;
-
+// DEMO ONLY: In production, SMS sending must be done via backend proxy
+// to protect API keys. This frontend implementation is for demonstration purposes only.
     const TEXTBELT_KEY = 'b88f3bc5c28e511ec230fa8b46c2289634e0604dIpPA4CpHdZu853Iddph9p2gI1';
     const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid);
     let successCount = 0;
