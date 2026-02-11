@@ -468,13 +468,13 @@
 
             <div class="form-group">
                 <label class="form-label">Safety Code *</label>
-                <input type="text" class="form-input" id="safetyCode" placeholder="4-6 characters (e.g., shark123)" required maxlength="20">
+                <input type="text" class="form-input" id="safetyCode" placeholder="4-6 characters (e.g., shark123)" required minlength="4" maxlength="6">
                 <div class="error-message" id="codeError">Safety codes do not match</div>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Confirm Safety Code *</label>
-                <input type="text" class="form-input" id="safetyCodeConfirm" placeholder="Confirm safety code" required maxlength="20">
+                <input type="text" class="form-input" id="safetyCodeConfirm" placeholder="Confirm safety code" required minlength="4" maxlength="6">
             </div>
 
             <button type="submit" class="btn" id="submitBtn">Complete Registration</button>
@@ -614,6 +614,14 @@ const firebaseConfig = {
                     document.getElementById('safetyCode').classList.add('error');
                     document.getElementById('safetyCodeConfirm').classList.add('error');
                     document.getElementById('codeError').classList.add('show');
+                    hasError = true;
+                }
+                
+                // Safety Code Length Validation (4-6 characters)
+                if (safetyCode.length < 4 || safetyCode.length > 6) {
+                    alert('Safety code must be between 4 and 6 characters.');
+                    document.getElementById('safetyCode').classList.add('error');
+                    document.getElementById('safetyCode').focus();
                     hasError = true;
                 }
                 
