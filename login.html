@@ -668,7 +668,7 @@
 
                 <div class="security-badge">
                     <span class="icon">🛡️</span>
-                    <span>End-to-end encryption active • Session expires in 10 minutes</span>
+                    <span>End-to-end encryption active • Session expires in 30 minutes</span>
                 </div>
 
                 <button type="submit" class="submit-btn" id="submitBtn">
@@ -684,18 +684,15 @@
     </div>
 
     <script>
-        // ==========================================
-        // FIREBASE CONFIGURATION - PASTE YOUR CONFIG HERE
-        // ==========================================
-     // Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
-  authDomain: "mobile-objex.firebaseapp.com",
-  projectId: "mobile-objex",
-  storageBucket: "mobile-objex.firebasestorage.app",
-  messagingSenderId: "875499185931",
-  appId: "1:875499185931:web:6f90c12f6a69649065640e"
-};
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
+            authDomain: "mobile-objex.firebaseapp.com",
+            projectId: "mobile-objex",
+            storageBucket: "mobile-objex.firebasestorage.app",
+            messagingSenderId: "875499185931",
+            appId: "1:875499185931:web:6f90c12f6a69649065640e"
+        };
         
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
@@ -727,9 +724,9 @@ const firebaseConfig = {
             const user = MO_USERS.find(u => u.username === username && u.password === password);
             
             if (user) {
-                // Create unique session per PDF specs
+                // Create unique session per PDF specs - UPDATED TO 30 MINUTES
                 const sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+                const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
                 
                 // Create session data object for Firebase
                 const sessionData = {
