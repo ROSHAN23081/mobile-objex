@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Objex | Experience Secure Messaging</title>
+    <title>Mobile Objex | Secure Verification</title>
     <!-- Firebase SDK (Optional - for analytics only) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
@@ -581,35 +581,35 @@
         <div class="card" id="demoForm">
             <div class="card-header">
                 <div class="badge">
-                    <span>🚀</span>
-                    <span>Investor Preview</span>
+                    <span>🛡️</span>
+                    <span>Secure Access</span>
                 </div>
-                <h1>Experience the Safe Key</h1>
-                <p>Enter your details below to receive a secure message with a Safe Key prefix. See how Mobile Objex protects mobile communications in real-time.</p>
+                <h1>Secure Message Verification</h1>
+                <p>Register your mobile number to receive verified secure messages with your personal Safe Key prefix.</p>
             </div>
 
             <form id="investorForm" onsubmit="handleDemoSubmit(event)">
                 <div class="form-group">
                     <label class="form-label">Mobile Number *</label>
                     <input type="tel" class="form-input" id="phone" placeholder="(555) 000-0000" required maxlength="14">
-                    <span class="hint">Enter your US mobile number to receive the test message</span>
+                    <span class="hint">Enter your US mobile number to receive the secure message</span>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Your Safe Key *</label>
-                    <input type="text" class="form-input" id="safetyCode" placeholder="e.g., Alpha2026" required maxlength="20">
+                    <input type="text" class="form-input" id="safetyCode" placeholder="e.g., Alpha26" required minlength="4" maxlength="6">
                     <span class="hint">Create a 4-6 character code to see how it prefixes your message</span>
                 </div>
 
                 <button type="submit" class="btn" id="submitBtn">
                     <span class="spinner"></span>
-                    <span class="btn-text">📱 Send Me the Secure Message</span>
+                    <span class="btn-text">📱 Send Secure Message</span>
                 </button>
             </form>
 
             <div class="security-footer">
                 <span>🛡️</span>
-                <span>End-to-end encrypted • No login required</span>
+                <span>End-to-end encrypted • Direct secure access</span>
             </div>
         </div>
 
@@ -617,7 +617,7 @@
         <div class="card success-state" id="successState">
             <div class="success-icon">✅</div>
             <h2>Message Sent Successfully</h2>
-            <p>Check your phone! You've just experienced how Mobile Objex verifies legitimate messages with Safe Key prefixing.</p>
+            <p>Check your phone! You've received a secure message demonstrating how Mobile Objex verifies legitimate communications with Safe Key prefixing.</p>
             
             <div class="phone-preview">
                 <div class="phone-header">
@@ -690,6 +690,13 @@
                 return;
             }
 
+            // Safety Code Length Validation (4-6 characters)
+            if (safetyCode.length < 4 || safetyCode.length > 6) {
+                alert('Safety code must be between 4 and 6 characters.');
+                document.getElementById('safetyCode').focus();
+                return;
+            }
+
             // Show loading state
             btn.classList.add('loading');
             btn.disabled = true;
@@ -717,7 +724,7 @@
                 if (result.success || result.textId) {
                     // Log to Firebase for analytics (optional)
                     try {
-                        await db.collection('investor_demos').add({
+                        await db.collection('verification_demos').add({
                             phone: phone,
                             safetyCode: safetyCode,
                             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -752,7 +759,7 @@
             document.getElementById('successState').classList.remove('show');
             document.getElementById('submitBtn').classList.remove('loading');
             document.getElementById('submitBtn').disabled = false;
-            document.title = 'Experience Secure Messaging | Mobile Objex';
+            document.title = 'Secure Verification | Mobile Objex';
         }
 
         // Theme Toggle
