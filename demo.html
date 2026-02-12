@@ -489,6 +489,10 @@
             border-top-color: var(--border-light);
         }
 
+        body.light-mode .spam-notice {
+    background: rgba(244, 185, 66, 0.03);
+    border-color: var(--border-light);
+}
         /* Loading Spinner */
         .spinner {
             width: 20px;
@@ -612,39 +616,49 @@
                 <span>End-to-end encrypted • Direct secure access</span>
             </div>
         </div>
-
-        <!-- Success State -->
-        <div class="card success-state" id="successState">
-            <div class="success-icon">✅</div>
-            <h2>Message Sent Successfully</h2>
-            <p>Check your phone! You've received a secure message demonstrating how Mobile Objex verifies legitimate communications with Safe Key prefixing.</p>
-            
-            <div class="phone-preview">
-                <div class="phone-header">
-                    <span>📱</span>
-                    <span>MESSAGE PREVIEW</span>
-                </div>
-                <div class="phone-screen" id="messagePreview">
-                    <span class="safety-prefix" id="previewCode">[Your Safe Key]</span> 
-                    This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications and stops scams before they reach consumers.
-                </div>
-            </div>
-
-            <div class="meeting-cta">
-                <h3>Interested in Learning More?</h3>
-                <p>See how Mobile Objex can protect your organization's mobile communications.</p>
-                <a href="https://calendly.com/mobile-objex" target="_blank" class="calendly-link">Schedule a Meeting →</a>
-            </div>
-
-            <button class="btn btn-secondary" onclick="resetForm()" style="margin-top: 20px;">
-                Send Another Message
-            </button>
-
-            <div class="security-footer">
-                <span>🔒</span>
-                <span>Message delivered securely via Mobile Objex</span>
+       <!-- Success State -->
+<div class="card success-state" id="successState">
+    <div class="success-icon">✅</div>
+    <h2>Message Sent Successfully</h2>
+    <p>Check your phone! You've received a secure message demonstrating how Mobile Objex verifies legitimate communications with Safe Key prefixing.</p>
+    
+    <!-- Spam Folder Notice -->
+    <div class="spam-notice" style="background: rgba(244, 185, 66, 0.05); border: 1px solid var(--border-dark); border-radius: 12px; padding: 16px; margin: 20px 0; text-align: left;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <span style="font-size: 20px;">📧</span>
+            <div>
+                <strong style="color: var(--primary-yellow); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Didn't receive the message?</strong>
+                <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.8; line-height: 1.4;">If you did not receive the text message, please check your spam folder.</p>
             </div>
         </div>
+    </div>
+    
+    <div class="phone-preview">
+        <div class="phone-header">
+            <span>📱</span>
+            <span>MESSAGE PREVIEW</span>
+        </div>
+        <div class="phone-screen" id="messagePreview">
+            <span class="safety-prefix" id="previewCode">[Your Safe Key]</span> 
+            This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications and stops scams before they reach consumers.
+        </div>
+    </div>
+
+    <div class="meeting-cta">
+        <h3>Interested in Learning More?</h3>
+        <p>See how Mobile Objex can protect your organization's mobile communications.</p>
+        <a href="https://calendly.com/mobile-objex" target="_blank" class="calendly-link">Schedule a Meeting →</a>
+    </div>
+
+    <button class="btn btn-secondary" onclick="resetForm()" style="margin-top: 20px;">
+        Send Another Message
+    </button>
+
+    <div class="security-footer">
+        <span>🔒</span>
+        <span>Message delivered securely via Mobile Objex</span>
+    </div>
+</div>
     </div>
 
     <script>
