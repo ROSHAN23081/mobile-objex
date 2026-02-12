@@ -894,7 +894,11 @@
             background: rgba(244, 185, 66, 0.05);
             border-color: var(--border-light);
         }
-
+        
+        body.light-mode .spam-notice {
+    background: rgba(244, 185, 66, 0.03);
+    border-color: var(--border-light);
+}
         .safety-notice .icon {
             color: var(--primary-yellow);
             font-size: 20px;
@@ -1121,7 +1125,14 @@
                                 <span id="charCount">0</span> / 1600 characters
                             </div>
                         </div>
-
+                        <!-- Add this after the closing </form> tag in the Campaign tab -->
+<div class="spam-notice" style="background: rgba(244, 185, 66, 0.05); border: 1px solid var(--border-dark); border-radius: 12px; padding: 16px; margin-top: 20px; display: flex; align-items: flex-start; gap: 12px; font-size: 13px; animation: fadeIn 0.5s ease;">
+    <span style="font-size: 20px; flex-shrink: 0;">📧</span>
+    <div>
+        <strong style="color: var(--primary-yellow); display: block; margin-bottom: 4px;">Didn't receive the message?</strong>
+        <span style="opacity: 0.8;">If you did not receive the text message, please check your spam folder.</span>
+    </div>
+</div>
                         <!-- Message Preview -->
                         <div class="safety-notice" style="margin-bottom: 20px;">
                             <span class="icon">👁️</span>
