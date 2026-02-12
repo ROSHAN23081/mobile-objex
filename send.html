@@ -1402,25 +1402,32 @@
             let successCount = 0;
             let failCount = 0;
             
-            for (const userId of selectedUserIds) {
-                const userDoc = await db.collection('users').doc(userId).get();
-                if (userDoc.exists) {
-                    const user = userDoc.data();
-                    const fullMessage = `${user.safetyCode} ${content}`;
-                    
-                    try {
-                        let result = {success: true, textId: 'sent'}; // Default assume success
-                        try {
-                            const response = await fetch('https://textbelt.com/text', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                body: `phone=${encodeURIComponent(user.phone)}&message=${encodeURIComponent(fullMessage)}&key=${TEXTBELT_KEY}`
-                            });
-                            result = await response.json();
-                        } catch (error) {
-                            // CORS error - ignore it, SMS still sends
-                            console.log('SMS sent (CORS warning suppressed)');
-                        }
+            // Inside handleSend function, replace the fetch section with this:
+for (const userId of selectedUserIds) {
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (userDoc.exists) {
+        const user = userDoc.data();
+        
+        // FIX: Clean phone number - remove () - and spaces
+        const cleanPhone = user.phone.replace(/\D/g, '');
+        
+        const fullMessage = `${user.safetyCode} ${content}`;
+        
+        try {
+            let result = {success: true, textId: 'sent'};
+            try {
+                const response = await fetch('https://textbelt.com/text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `phone=${encodeURIComponent(cleanPhone)}&message=${encodeURIComponent(fullMessage)}&key=${TEXTBELT_KEY}`
+                });
+                result = await response.json();
+                console.log('TextBelt response:', result);
+            } catch (error) {
+                console.log('SMS sent (CORS warning suppressed)');
+            }
+            
+            // ... rest of the code remains same
                         
                         if (result.success) {
                             await db.collection('messages').add({
