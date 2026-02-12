@@ -384,6 +384,11 @@
         body.light-mode .security-footer {
             border-top-color: var(--border-light);
         }
+        
+        body.light-mode .spam-notice {
+    background: rgba(244, 185, 66, 0.03);
+    border-color: var(--border-light);
+}
 
         /* SMS Preview */
         .sms-preview {
@@ -485,25 +490,35 @@
             <span>Secured by Mobile Objex • End-to-end encrypted</span>
         </div>
     </div>
-
-    <!-- Success Message -->
-    <div class="card success-state" id="successState">
-        <div class="success-icon">✅</div>
-        <h2>Registration Complete</h2>
-        <p>Your information has been securely stored. You will receive a confirmation SMS shortly with your safety code verification.</p>
-        
-        <div class="sms-preview">
-            <div class="sms-header">📱 Confirmation SMS Preview</div>
-            <div class="sms-content" id="smsPreviewContent">
-                <span style="color: var(--primary-yellow); font-weight: 700;">[Your Safety Code]</span> Thank you for registering with Mobile Objex. Your secure messaging is now active.
+   <!-- Success Message -->
+<div class="card success-state" id="successState">
+    <div class="success-icon">✅</div>
+    <h2>Registration Complete</h2>
+    <p>Your information has been securely stored. You will receive a confirmation SMS shortly with your safety code verification.</p>
+    
+    <!-- Spam Folder Notice -->
+    <div class="spam-notice" style="background: rgba(244, 185, 66, 0.05); border: 1px solid var(--border-dark); border-radius: 12px; padding: 16px; margin: 20px 0; text-align: left;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <span style="font-size: 20px;">📧</span>
+            <div>
+                <strong style="color: var(--primary-yellow); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Didn't receive the message?</strong>
+                <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.8; line-height: 1.4;">If you did not receive the text message, please check your spam folder.</p>
             </div>
         </div>
-        
-        <div class="security-footer" style="margin-top: 30px;">
-            <span>🔒</span>
-            <span>Session secured • Data encrypted</span>
+    </div>
+    
+    <div class="sms-preview">
+        <div class="sms-header">📱 Confirmation SMS Preview</div>
+        <div class="sms-content" id="smsPreviewContent">
+            <span style="color: var(--primary-yellow); font-weight: 700;">[Your Safety Code]</span> Thank you for registering with Mobile Objex. Your secure messaging is now active.
         </div>
     </div>
+    
+    <div class="security-footer" style="margin-top: 30px;">
+        <span>🔒</span>
+        <span>Session secured • Data encrypted</span>
+    </div>
+</div>
 
    <script>
         // ==========================================
