@@ -520,176 +520,204 @@
         <span>Session secured • Data encrypted</span>
     </div>
 </div>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
+    authDomain: "mobile-objex.firebaseapp.com",
+    projectId: "mobile-objex",
+    storageBucket: "mobile-objex.firebasestorage.app",
+    messagingSenderId: "875499185931",
+    appId: "1:875499185931:web:6f90c12f6a69649065640e"
+  };
 
-  <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
-  authDomain: "mobile-objex.firebaseapp.com",
-  projectId: "mobile-objex",
-  storageBucket: "mobile-objex.firebasestorage.app",
-  messagingSenderId: "875499185931",
-  appId: "1:875499185931:web:6f90c12f6a69649065640e"
-};
-        
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-const urlParams = new URLSearchParams(window.location.search);
-const sessionId = urlParams.get('s');
-let sessionValid = false;
-let sessionData = null;
+  const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
 
-async function validateSession() {
+  function normalizePhone(input) {
+    const raw = (input || "").trim();
+    if (!raw) return "";
+    if (raw.startsWith("+")) return "+" + raw.slice(1).replace(/[^\d]/g, "");
+    const digits = raw.replace(/[^\d]/g, "");
+    if (digits.length === 10) return "+1" + digits;
+    if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+    return "+" + digits;
+  }
+
+  async function postSendSMS(toE164, text) {
+    const res = await fetch(SENDSMS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: toE164, text })
+    });
+
+    const raw = await res.text();
+    let data = {};
+    try { data = JSON.parse(raw); } catch { data = { raw }; }
+
+    if (!res.ok) {
+      throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    }
+    return data; // { ok: true, ... }
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const sessionId = urlParams.get('s');
+  let sessionData = null;
+
+  async function validateSession() {
     if (!sessionId || !sessionId.startsWith('sess_')) {
-        showInvalidSession();
-        return false;
+      showInvalidSession();
+      return false;
     }
 
     try {
-        const doc = await db.collection('sessions').doc(sessionId).get();
-        
-        if (!doc.exists) {
-            showInvalidSession();
-            return false;
-        }
-        
-        sessionData = doc.data();
-        const now = firebase.firestore.Timestamp.now();
-        
-        if (!sessionData.active || sessionData.expiresAt.toMillis() < now.toMillis()) {
-            showInvalidSession();
-            return false;
-        }
-        
-        sessionValid = true;
-        return true;
-    } catch (error) {
-        console.error("Error validating session:", error);
+      const doc = await db.collection('sessions').doc(sessionId).get();
+      if (!doc.exists) {
         showInvalidSession();
         return false;
-    }
-}
+      }
 
-function showInvalidSession() {
+      sessionData = doc.data();
+      const now = firebase.firestore.Timestamp.now();
+
+      if (!sessionData.active || sessionData.expiresAt.toMillis() < now.toMillis()) {
+        showInvalidSession();
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error validating session:", error);
+      showInvalidSession();
+      return false;
+    }
+  }
+
+  function showInvalidSession() {
     document.getElementById('registrationForm').style.display = 'none';
     document.getElementById('invalidSession').classList.add('show');
-}
+  }
 
-function setupPhoneFormatting() {
+  function setupPhoneFormatting() {
     const phoneInputs = [document.getElementById('phone'), document.getElementById('phoneConfirm')];
-    
+
     phoneInputs.forEach(input => {
-        input.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length > 0) {
-                if (value.length <= 3) {
-                    value = '(' + value;
-                } else if (value.length <= 6) {
-                    value = '(' + value.slice(0, 3) + ') ' + value.slice(3);
-                } else {
-                    value = '(' + value.slice(0, 3) + ') ' + value.slice(3, 6) + '-' + value.slice(6, 10);
-                }
-            }
-            e.target.value = value;
-        });
+      input.addEventListener('input', function (e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 0) {
+          if (value.length <= 3) value = '(' + value;
+          else if (value.length <= 6) value = '(' + value.slice(0, 3) + ') ' + value.slice(3);
+          else value = '(' + value.slice(0, 3) + ') ' + value.slice(3, 6) + '-' + value.slice(6, 10);
+        }
+        e.target.value = value;
+      });
     });
-}
+  }
 
-function setupForm() {
-    document.getElementById('captureForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const phone = document.getElementById('phone').value.trim();
-        const phoneConfirm = document.getElementById('phoneConfirm').value.trim();
-        const safetyCode = document.getElementById('safetyCode').value.trim();
-        const safetyCodeConfirm = document.getElementById('safetyCodeConfirm').value.trim();
-        
-        document.querySelectorAll('.form-input').forEach(el => el.classList.remove('error'));
-        document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
-        
-        let hasError = false;
-        
-        if (phone !== phoneConfirm) {
-            document.getElementById('phone').classList.add('error');
-            document.getElementById('phoneConfirm').classList.add('error');
-            document.getElementById('phoneError').classList.add('show');
-            hasError = true;
-        }
-        
-        if (safetyCode !== safetyCodeConfirm) {
-            document.getElementById('safetyCode').classList.add('error');
-            document.getElementById('safetyCodeConfirm').classList.add('error');
-            document.getElementById('codeError').classList.add('show');
-            hasError = true;
-        }
-        
-        if (safetyCode.length < 4 || safetyCode.length > 6) {
-            alert('Safety code must be between 4 and 6 characters.');
-            document.getElementById('safetyCode').classList.add('error');
-            document.getElementById('safetyCode').focus();
-            hasError = true;
-        }
-        
-        if (hasError) return;
-        
-        try {
-            const userData = {
-                sessionId: sessionId,
-                phone: phone,
-                safetyCode: safetyCode,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                status: 'newly entered',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            
-            await db.collection('users').add(userData);
-            
-            document.getElementById('smsPreviewContent').innerHTML = 
-                `<span style="color: var(--primary-yellow); font-weight: 700;">${escapeHtml(safetyCode)}</span> Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
-            
-            document.getElementById('registrationForm').style.display = 'none';
-            document.getElementById('successState').classList.add('show');
-            
-            await sendConfirmationSMS(phone, safetyCode);
-            
-        } catch (error) {
-            console.error("Error saving to database:", error);
-            alert('Error saving data. Please try again.');
-        }
-    });
-}
-
-function escapeHtml(text) {
+  function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-}
+  }
 
-async function sendConfirmationSMS(phone, safetyCode) {
+  async function sendConfirmationSMS(phoneDisplay, safetyCode) {
+    const phoneE164 = normalizePhone(phoneDisplay);
     const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
-    
-    console.log('SENDING:', { phone, message });
-    
-    try {
-        const sendSMS = firebase.functions().httpsCallable('sendSMS');
-        const result = await sendSMS({
-            phone: phone,
-            message: message
-        });
-        console.log('SUCCESS:', result.data);
-        return true;
-    } catch (error) {
-        console.error('ERROR:', error);
-        return false;
-    }
-}
 
-validateSession().then(valid => {
-    if (valid) {
-        setupPhoneFormatting();
-        setupForm();
+    console.log('SENDING:', { phoneE164, message });
+
+    try {
+      const result = await postSendSMS(phoneE164, message);
+      console.log('SMS RESULT:', result);
+      return true;
+    } catch (error) {
+      console.error('SMS ERROR:', error);
+      return false;
     }
-});
+  }
+
+  function setupForm() {
+    document.getElementById('captureForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const phone = document.getElementById('phone').value.trim();
+      const phoneConfirm = document.getElementById('phoneConfirm').value.trim();
+      const safetyCode = document.getElementById('safetyCode').value.trim();
+      const safetyCodeConfirm = document.getElementById('safetyCodeConfirm').value.trim();
+
+      document.querySelectorAll('.form-input').forEach(el => el.classList.remove('error'));
+      document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
+
+      let hasError = false;
+
+      if (phone !== phoneConfirm) {
+        document.getElementById('phone').classList.add('error');
+        document.getElementById('phoneConfirm').classList.add('error');
+        document.getElementById('phoneError').classList.add('show');
+        hasError = true;
+      }
+
+      if (safetyCode !== safetyCodeConfirm) {
+        document.getElementById('safetyCode').classList.add('error');
+        document.getElementById('safetyCodeConfirm').classList.add('error');
+        document.getElementById('codeError').classList.add('show');
+        hasError = true;
+      }
+
+      if (safetyCode.length < 4 || safetyCode.length > 6) {
+        alert('Safety code must be between 4 and 6 characters.');
+        document.getElementById('safetyCode').classList.add('error');
+        document.getElementById('safetyCode').focus();
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      try {
+        const phoneE164 = normalizePhone(phone);
+
+        const userData = {
+          sessionId: sessionId,
+
+          // ✅ keep display format for UI
+          phone: phone,                 // existing field used by your UI
+          phoneDisplay: phone,          // new optional display field
+          phoneE164: phoneE164,         // ✅ used for sending
+
+          safetyCode: safetyCode,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          status: 'newly entered',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('users').add(userData);
+
+        document.getElementById('smsPreviewContent').innerHTML =
+          `<span style="color: var(--primary-yellow); font-weight: 700;">${escapeHtml(safetyCode)}</span> Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
+
+        document.getElementById('registrationForm').style.display = 'none';
+        document.getElementById('successState').classList.add('show');
+
+        // ✅ send confirmation SMS through your HTTP function
+        await sendConfirmationSMS(phone, safetyCode);
+
+      } catch (error) {
+        console.error("Error saving to database:", error);
+        alert('Error saving data. Please try again.');
+      }
+    });
+  }
+
+  // Start
+  validateSession().then(valid => {
+    if (valid) {
+      setupPhoneFormatting();
+      setupForm();
+    }
+  });
 </script>
+
 </body>
 </html>
