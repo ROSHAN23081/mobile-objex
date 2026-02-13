@@ -691,15 +691,14 @@ async function sendConfirmationSMS(phone, safetyCode) {
       phone: phone,
       message: message
     });
-    
     console.log('SUCCESS:', result.data);
     return true;
-    
   } catch (error) {
     console.error('ERROR:', error);
     return false;
   }
-}    // Initialize
+}
+       // Initialize
         validateSession().then(valid => {
             if (valid) {
                 setupPhoneFormatting();
