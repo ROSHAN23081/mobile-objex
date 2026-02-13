@@ -8,7 +8,6 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
 
   <style>
     :root {
@@ -706,13 +705,9 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Fixed SMS endpoint (removed trailing spaces)
-    const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
+    // TEXTBELT CONFIGURATION - Replace with your API key
+    const TEXTBELT_API_KEY = 'd962e201060d47930e6cda695e3c68b402a5e136YfyGtQBeCPrDHzcFCNfCDF1NO'; 
     
-    // Initialize Functions
-    const functions = firebase.app().functions("us-central1");
-    const sendSMSCallable = functions.httpsCallable("sendSMSCallable");
-
     // -------------------------
     // Globals
     // -------------------------
@@ -745,54 +740,30 @@
       return null;
     }
 
-    function isSendOk(data) {
-      if (!data) return false;
-      return data.ok === true || data.success === true;
-    }
-
-    async function postSendSMS(toE164, message) {
-      const res = await fetch(SENDSMS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: toE164,
-          text: message,
-          phone: toE164,
-          message: message
-        })
-      });
-
-      const raw = await res.text();
-      let data = {};
-      try { data = JSON.parse(raw); } catch { data = { raw }; }
-
-      if (!res.ok) {
-        const msg = data.error || data.message || `HTTP ${res.status}`;
-        const err = new Error(msg);
-        err.status = res.status;
-        err.data = data;
-        throw err;
-      }
-      return data;
-    }
-
-    async function sendSmsWithFallback(toE164, fullMessage) {
-      // 1) Callable (TextMagic)
+    // TEXTBELT SMS Function
+    async function sendSMS(phone, message) {
       try {
-        const result = await sendSMSCallable({
-          phone: toE164,
-          message: fullMessage,
-          to: toE164,
-          text: fullMessage
+        const response = await fetch('https://textbelt.com/text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: phone,
+            message: message,
+            key: TEXTBELT_API_KEY
+          })
         });
-        return { transport: "callable", data: result.data || null };
-      } catch (err) {
-        console.warn("Callable sendSMS failed -> trying HTTP:", err);
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'SMS failed to send');
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('SMS Error:', error);
+        throw error;
       }
-
-      // 2) HTTP fallback (TextMagic)
-      const data = await postSendSMS(toE164, fullMessage);
-      return { transport: "http", data };
     }
 
     // -------------------------
@@ -1013,34 +984,30 @@
           const fullMessage = `${user.safetyCode} ${content}`;
 
           try {
-            const { transport, data } = await sendSmsWithFallback(toE164, fullMessage);
-            console.log(`SEND RESULT (${transport}):`, JSON.stringify(data, null, 2));
+            // Send via Textbelt
+            const result = await sendSMS(toE164, fullMessage);
+            console.log('Textbelt Result:', result);
 
-            if (isSendOk(data)) {
-              await db.collection('messages').add({
-                sessionId: sessionId,
-                mo_username: currentSession.mo_username || currentSession.username,
-                recipient: user.phoneDisplay || user.phone,
-                recipientE164: toE164,
-                safetyCode: user.safetyCode,
-                content: content,
-                fullMessage: fullMessage,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                status: 'sent',
-                messageId: (data && (data.messageId || data.id)) ? (data.messageId || data.id) : null
-              });
+            await db.collection('messages').add({
+              sessionId: sessionId,
+              mo_username: currentSession.mo_username || currentSession.username,
+              recipient: user.phoneDisplay || user.phone,
+              recipientE164: toE164,
+              safetyCode: user.safetyCode,
+              content: content,
+              fullMessage: fullMessage,
+              timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+              status: 'sent',
+              textbeltId: result.textId || null
+            });
 
-              await db.collection('users').doc(userId).update({
-                status: 'sent',
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                phoneE164: toE164
-              });
+            await db.collection('users').doc(userId).update({
+              status: 'sent',
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+              phoneE164: toE164
+            });
 
-              successCount++;
-            } else {
-              const msg = (data && (data.error || data.message)) ? (data.error || data.message) : "SMS failed";
-              throw new Error(msg);
-            }
+            successCount++;
           } catch (smsError) {
             console.error('SMS Failed:', smsError);
 
@@ -1060,8 +1027,8 @@
             failCount++;
           }
 
-          // Rate limit
-          await new Promise(r => setTimeout(r, 1000));
+          // Rate limit - Textbelt recommends 1 sec between messages
+          await new Promise(r => setTimeout(r, 1100));
         } catch (error) {
           console.error('Error processing user:', error);
           failCount++;
