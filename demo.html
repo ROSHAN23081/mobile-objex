@@ -685,6 +685,16 @@
     if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
     return "+" + digits;
   }
+    function normalizeUSPhoneToE164(raw) {
+  const digits = String(raw || "").replace(/\D/g, "");
+  // US numbers only (since your UI formats US style)
+  if (digits.length === 10) return "+1" + digits;
+  if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+  // If user pasted +E164 already
+  if (String(raw).trim().startsWith("+") && digits.length >= 10) return "+" + digits;
+  return null;
+}
+
 
   async function postSendSMS(toE164, text) {
     const res = await fetch(SENDSMS_URL, {
