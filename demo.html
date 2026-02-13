@@ -393,15 +393,15 @@
 
     try {
       // Use CORS Proxy to bypass browser restrictions - NO BACKEND NEEDED!
-      const response = await fetch('https://corsproxy.io/?https://textbelt.com/text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: phone,
-          message: fullMessage,
-          key: TEXTBELT_KEY
-        })
-      });
+    const response = await fetch('https://thingproxy.freeboard.io/fetch/https://textbelt.com/text', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    phone: phone,
+    message: fullMessage,
+    key: 'd962e201060d47930e6cda695e3c68b402a5e136YfyGtQBeCPrDHzcFCNfCDF1NO'
+  })
+});
       
       const data = await response.json();
       console.log("Textbelt response:", data);
