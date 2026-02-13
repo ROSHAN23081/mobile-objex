@@ -682,18 +682,16 @@ const firebaseConfig = {
 
         // Send confirmation SMS - integrates with your existing SMS Composer App
 async function sendConfirmationSMS(phone, safetyCode) {
-  const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
+  const message = `${safetyCode} Thank you for registering with Mobile Objex...`;
   
-  try {
-    // Initialize Firebase Functions
-    const sendSMS = firebase.functions().httpsCallable('sendSMS');
-    
-    console.log('Sending SMS to:', phone); // Debug log
-    
-    const result = await sendSMS({
-      phone: phone,
-      message: message
-    });
+  // ADD THIS LINE:
+  console.log('DATA BEING SENT TO FUNCTION:', { phone, message });
+  
+  const sendSMS = firebase.functions().httpsCallable('sendSMS');
+  const result = await sendSMS({
+    phone: phone,
+    message: message
+  });
     
     console.log('SMS Success:', result.data);
     return true;
