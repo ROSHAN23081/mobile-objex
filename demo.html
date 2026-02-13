@@ -745,7 +745,7 @@
   const fullMessage = `${safetyCode} ${messageContent}`;
 
   try {
-    const sendSMS = firebase.app().functions("us-central1").httpsCallable("sendSMS");
+      const sendSMS = firebase.app().functions("us-central1").httpsCallable("sendSMSCallable");
     const result = await sendSMS({ phone, message: fullMessage });
 
     console.log("DEMO SMS RESULT:", JSON.stringify(result.data, null, 2));
