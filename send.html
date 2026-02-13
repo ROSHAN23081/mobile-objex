@@ -1182,555 +1182,595 @@
         </div>
     </div>
 
-    <script>
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
-            authDomain: "mobile-objex.firebaseapp.com",
-            projectId: "mobile-objex",
-            storageBucket: "mobile-objex.firebasestorage.app",
-            messagingSenderId: "875499185931",
-            appId: "1:875499185931:web:6f90c12f6a69649065640e"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+   <script>
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
+    authDomain: "mobile-objex.firebaseapp.com",
+    projectId: "mobile-objex",
+    storageBucket: "mobile-objex.firebasestorage.app",
+    messagingSenderId: "875499185931",
+    appId: "1:875499185931:web:6f90c12f6a69649065640e"
+  };
 
-        // Global variables
-        let currentSession = null;
-        let sessionId = null;
-        let usersListener = null;
-        let messages = [];
-        let timerInterval = null;
-        let expiryTime = null;
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-        // Initialize page
-        async function init() {
-            checkAuth();
-            loadTheme();
-            startTimer();
-            setupCharCounter();
-            setupMessagePreview();
-        }
+  // ✅ Your deployed HTTP function URL
+  const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
 
-        // Tab switching
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.getElementById('tab-' + tabName).classList.add('active');
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            document.getElementById('content-' + tabName).classList.add('active');
-        }
+  // Global variables
+  let currentSession = null;
+  let sessionId = null;
+  let usersListener = null;
+  let messages = [];
+  let timerInterval = null;
+  let expiryTime = null;
 
-        // Check authentication and setup realtime listeners
-        async function checkAuth() {
-            const sessionStr = localStorage.getItem('mo_current_session');
-            
-            if (!sessionStr) {
-                window.location.href = 'login.html';
-                return;
-            }
+  // -------------------------
+  // Helpers (IMPORTANT)
+  // -------------------------
+  function normalizePhone(input) {
+    const raw = (input || "").trim();
+    if (!raw) return "";
 
-            try {
-                currentSession = JSON.parse(sessionStr);
-                sessionId = currentSession.sessionId;
-                
-                // Verify with Firebase that session exists and is active
-                const doc = await db.collection('sessions').doc(sessionId).get();
-                if (!doc.exists || !doc.data().active) {
-                    showExpiredModal();
-                    return;
-                }
-                
-                // Check expiry
-                if (new Date(currentSession.expiresAt) < new Date()) {
-                    showExpiredModal();
-                    return;
-                }
-                
-                // Display username
-                document.getElementById('usernameDisplay').textContent = currentSession.name || currentSession.username;
-                document.getElementById('shortUrl').textContent = currentSession.captureUrl;
-                
-                // Setup realtime listener for users (CONCURRENT SESSION SUPPORT)
-                // This updates UI automatically when new users register
-                setupUsersListener();
-                
-                // Load message history from Firebase
-                loadMessageHistory();
-                
-            } catch (e) {
-                console.error('Session error:', e);
-                logout();
-            }
-        }
+    // if already starts with +, keep + and strip non-digits
+    if (raw.startsWith("+")) return "+" + raw.slice(1).replace(/[^\d]/g, "");
 
-        // Realtime listener for users (KEY FEATURE for concurrent sessions)
-        function setupUsersListener() {
-            // Remove orderBy to avoid index requirement
-            usersListener = db.collection('users')
-                .where('sessionId', '==', sessionId)
-                .onSnapshot(snapshot => {
-                    const users = [];
-                    snapshot.forEach(doc => {
-                        users.push({ id: doc.id, ...doc.data() });
-                    });
-                    // Sort manually in JavaScript instead
-                    users.sort((a, b) => {
-                        const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
-                        const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
-                        return timeB - timeA; // Descending order
-                    });
-                    updateUsersUI(users);
-                }, error => {
-                    console.error("Error listening to users:", error);
-                });
-        }
+    const digits = raw.replace(/[^\d]/g, "");
 
-        // Update UI with user data
-        function updateUsersUI(users) {
-            // Update Users Tab
-            const container = document.getElementById('usersTableContainer');
-            const count = document.getElementById('usersCount');
-            
-            if (users.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">📭</div>
-                        <p>No users registered in this session</p>
-                        <p style="font-size: 12px; margin-top: 10px;">Share the link above to add users</p>
-                    </div>
-                `;
-                count.textContent = 'No users registered';
-            } else {
-                count.textContent = `${users.length} users registered`;
-                
-                let html = `
-                    <table class="users-table">
-                        <thead>
-                            <tr>
-                                <th>Phone Number</th>
-                                <th>Safety Code</th>
-                                <th>Registered</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-                
-                users.forEach(user => {
-                    const date = user.timestamp ? user.timestamp.toDate().toLocaleString() : 'Just now';
-                    html += `
-                        <tr>
-                            <td>${user.phone}</td>
-                            <td style="color: var(--primary-yellow); font-family: monospace;">${user.safetyCode}</td>
-                            <td>${date}</td>
-                            <td><span class="status-badge status-${user.status === 'newly entered' ? 'new' : 'sent'}">${user.status}</span></td>
-                        </tr>
-                    `;
-                });
-                
-                html += '</tbody></table>';
-                container.innerHTML = html;
-            }
-            
-            // Update Campaign Tab Recipients
-            const list = document.getElementById('recipientsList');
-            const recipientCount = document.getElementById('recipientCount');
-            const sendBtn = document.getElementById('sendBtn');
-            
-            if (users.length === 0) {
-                list.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">📭</div>
-                        <p>No recipients captured in this session</p>
-                        <p style="font-size: 12px; margin-top: 10px;">Switch to Users tab to get the registration link</p>
-                    </div>
-                `;
-                recipientCount.textContent = 'No recipients available';
-                if (sendBtn) sendBtn.disabled = true;
-            } else {
-                recipientCount.textContent = `${users.length} recipients available`;
-                if (sendBtn) sendBtn.disabled = false;
-                
-                list.innerHTML = users.map((user, index) => `
-                    <div class="recipient-item">
-                        <div class="recipient-info">
-                            <div class="recipient-phone">${user.phone}</div>
-                            <div class="recipient-code">Safety Code: ${user.safetyCode}</div>
-                        </div>
-                        <input type="checkbox" class="recipient-checkbox" checked data-userid="${user.id}">
-                    </div>
-                `).join('');
-            }
-        }
+    // US default behavior:
+    if (digits.length === 10) return "+1" + digits;
+    if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
 
-        // Setup message preview with safety code prefixing
-        function setupMessagePreview() {
-            const textarea = document.getElementById('messageContent');
-            const preview = document.getElementById('previewText');
-            
-            if (textarea && preview) {
-                textarea.addEventListener('input', function() {
-                    const text = this.value;
-                    document.getElementById('charCount').textContent = text.length;
-                    
-                    if (text.trim()) {
-                        preview.innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> ${escapeHtml(text)}`;
-                    } else {
-                        preview.innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> Your message will appear here...`;
-                    }
-                });
-            }
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // Handle send message
-      async function handleSend(e) {
-  e.preventDefault();
-  
-  const content = document.getElementById('messageContent').value.trim();
-  if (!content) {
-    alert('Please enter a message');
-    return false;
+    // fallback
+    return "+" + digits;
   }
 
-  const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
-  if (checkboxes.length === 0) {
-    alert('Please select at least one recipient');
-    return false;
+  async function postSendSMS(toE164, text) {
+    const res = await fetch(SENDSMS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: toE164, text })
+    });
+
+    const raw = await res.text();
+    let data = {};
+    try { data = JSON.parse(raw); } catch { data = { raw }; }
+
+    if (!res.ok) {
+      const msg = data.error || data.message || `HTTP ${res.status}`;
+      const err = new Error(msg);
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+
+    return data; // expected: { ok: true, ... }
   }
 
-  const sendBtn = document.getElementById('sendBtn');
-  sendBtn.innerHTML = '<span>⏳</span> Sending...';
-  sendBtn.disabled = true;
+  // -------------------------
+  // Initialize page
+  // -------------------------
+  async function init() {
+    await checkAuth();          // ✅ await fixes timer issue
+    loadTheme();
+    startTimer();
+    setupCharCounter();
+    setupMessagePreview();
+  }
 
-  const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid);
-  let successCount = 0;
-  let failCount = 0;
+  // Tab switching
+  function switchTab(tabName) {
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.getElementById('tab-' + tabName).classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    document.getElementById('content-' + tabName).classList.add('active');
+  }
 
-  // Initialize Firebase Callable Function (NEW - Vonage backend)
-  const sendSMS = firebase.functions().httpsCallable('sendSMS');
+  // Check authentication and setup realtime listeners
+  async function checkAuth() {
+    const sessionStr = localStorage.getItem('mo_current_session');
 
-  for (const userId of selectedUserIds) {
+    if (!sessionStr) {
+      window.location.href = 'login.html';
+      return;
+    }
+
     try {
-      const userDoc = await db.collection('users').doc(userId).get();
-      if (!userDoc.exists) continue;
-      
-      const user = userDoc.data();
-      const fullMessage = `${user.safetyCode} ${content}`;
-      
-      try {
-        // Call Vonage backend function (NEW)
-        const result = await sendSMS({
-          phone: user.phone,
-          message: fullMessage
+      currentSession = JSON.parse(sessionStr);
+      sessionId = currentSession.sessionId;
+
+      // Verify with Firebase that session exists and is active
+      const doc = await db.collection('sessions').doc(sessionId).get();
+      if (!doc.exists || !doc.data().active) {
+        showExpiredModal();
+        return;
+      }
+
+      // Check expiry
+      if (new Date(currentSession.expiresAt) < new Date()) {
+        showExpiredModal();
+        return;
+      }
+
+      // Display username
+      document.getElementById('usernameDisplay').textContent = currentSession.name || currentSession.username;
+      document.getElementById('shortUrl').textContent = currentSession.captureUrl;
+
+      // Setup realtime listener for users
+      setupUsersListener();
+
+      // Load message history
+      loadMessageHistory();
+
+    } catch (e) {
+      console.error('Session error:', e);
+      logout();
+    }
+  }
+
+  // Realtime listener for users
+  function setupUsersListener() {
+    usersListener = db.collection('users')
+      .where('sessionId', '==', sessionId)
+      .onSnapshot(snapshot => {
+        const users = [];
+        snapshot.forEach(doc => {
+          users.push({ id: doc.id, ...doc.data() });
         });
-        
-        if (result.data.success) {
-          // Save to Firestore
+
+        // Sort manually
+        users.sort((a, b) => {
+          const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
+          const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
+          return timeB - timeA;
+        });
+
+        updateUsersUI(users);
+      }, error => {
+        console.error("Error listening to users:", error);
+      });
+  }
+
+  // Update UI with user data
+  function updateUsersUI(users) {
+    const container = document.getElementById('usersTableContainer');
+    const count = document.getElementById('usersCount');
+
+    if (users.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <p>No users registered in this session</p>
+          <p style="font-size: 12px; margin-top: 10px;">Share the link above to add users</p>
+        </div>
+      `;
+      count.textContent = 'No users registered';
+    } else {
+      count.textContent = `${users.length} users registered`;
+
+      let html = `
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Phone Number</th>
+              <th>Safety Code</th>
+              <th>Registered</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      users.forEach(user => {
+        const date = user.timestamp ? user.timestamp.toDate().toLocaleString() : 'Just now';
+        const displayPhone = user.phoneDisplay || user.phone; // ✅ supports new field
+        html += `
+          <tr>
+            <td>${displayPhone}</td>
+            <td style="color: var(--primary-yellow); font-family: monospace;">${user.safetyCode}</td>
+            <td>${date}</td>
+            <td><span class="status-badge status-${user.status === 'newly entered' ? 'new' : 'sent'}">${user.status}</span></td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    // Campaign recipients list
+    const list = document.getElementById('recipientsList');
+    const recipientCount = document.getElementById('recipientCount');
+    const sendBtn = document.getElementById('sendBtn');
+
+    if (users.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <p>No recipients captured in this session</p>
+          <p style="font-size: 12px; margin-top: 10px;">Switch to Users tab to get the registration link</p>
+        </div>
+      `;
+      recipientCount.textContent = 'No recipients available';
+      if (sendBtn) sendBtn.disabled = true;
+    } else {
+      recipientCount.textContent = `${users.length} recipients available`;
+      if (sendBtn) sendBtn.disabled = false;
+
+      list.innerHTML = users.map(user => `
+        <div class="recipient-item">
+          <div class="recipient-info">
+            <div class="recipient-phone">${user.phoneDisplay || user.phone}</div>
+            <div class="recipient-code">Safety Code: ${user.safetyCode}</div>
+          </div>
+          <input type="checkbox" class="recipient-checkbox" checked data-userid="${user.id}">
+        </div>
+      `).join('');
+    }
+  }
+
+  // Message preview
+  function setupMessagePreview() {
+    const textarea = document.getElementById('messageContent');
+    const preview = document.getElementById('previewText');
+
+    if (textarea && preview) {
+      textarea.addEventListener('input', function () {
+        const text = this.value;
+        document.getElementById('charCount').textContent = text.length;
+
+        if (text.trim()) {
+          preview.innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> ${escapeHtml(text)}`;
+        } else {
+          preview.innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> Your message will appear here...`;
+        }
+      });
+    }
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // ✅ SEND MESSAGE (fixed to use HTTP function)
+  async function handleSend(e) {
+    e.preventDefault();
+
+    const content = document.getElementById('messageContent').value.trim();
+    if (!content) {
+      alert('Please enter a message');
+      return false;
+    }
+
+    const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
+    if (checkboxes.length === 0) {
+      alert('Please select at least one recipient');
+      return false;
+    }
+
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.innerHTML = '<span>⏳</span> Sending...';
+    sendBtn.disabled = true;
+
+    const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const userId of selectedUserIds) {
+      try {
+        const userDoc = await db.collection('users').doc(userId).get();
+        if (!userDoc.exists) continue;
+
+        const user = userDoc.data();
+
+        // ✅ Use phoneE164 if available, else normalize display phone
+        const to = user.phoneE164 || normalizePhone(user.phoneDisplay || user.phone);
+        if (!to || to.length < 8) throw new Error("Invalid phone format");
+
+        const fullMessage = `${user.safetyCode} ${content}`;
+
+        try {
+          const apiResult = await postSendSMS(to, fullMessage);
+
+          if (apiResult.ok) {
+            await db.collection('messages').add({
+              sessionId: sessionId,
+              mo_username: currentSession.mo_username || currentSession.username,
+              recipient: user.phoneDisplay || user.phone,
+              recipientE164: to,
+              safetyCode: user.safetyCode,
+              content: content,
+              fullMessage: fullMessage,
+              timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+              status: 'sent',
+              messageId: apiResult.messageId || apiResult.id || null
+            });
+
+            await db.collection('users').doc(userId).update({
+              status: 'sent',
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            successCount++;
+          } else {
+            throw new Error(apiResult.error || "SMS failed");
+          }
+        } catch (smsError) {
+          console.error('SMS Failed:', smsError);
+
+          // Optional: log failure too
           await db.collection('messages').add({
             sessionId: sessionId,
             mo_username: currentSession.mo_username || currentSession.username,
-            recipient: user.phone,
+            recipient: user.phoneDisplay || user.phone,
+            recipientE164: to,
             safetyCode: user.safetyCode,
             content: content,
             fullMessage: fullMessage,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            status: 'sent',
-            messageId: result.data.messageId
+            status: 'failed',
+            error: smsError.message || String(smsError)
           });
-          
-          // Update user status
-          await db.collection('users').doc(userId).update({ 
-            status: 'sent',
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          
-          successCount++;
+
+          failCount++;
         }
-        
-      } catch (smsError) {
-        console.error('SMS Failed:', smsError);
+
+        // Rate limiting
+        await new Promise(r => setTimeout(r, 1000));
+
+      } catch (error) {
+        console.error('Error processing user:', error);
         failCount++;
       }
-      
-      // Rate limiting: wait 1 second between messages
-      await new Promise(r => setTimeout(r, 1000));
-      
-    } catch (error) {
-      console.error('Error processing user:', error);
-      failCount++;
+    }
+
+    await loadMessageHistory();
+
+    sendBtn.innerHTML = '<span>🚀</span> Send Secure Message';
+    sendBtn.disabled = false;
+
+    if (successCount > 0) {
+      alert(`✅ Sent to ${successCount} people! ${failCount > 0 ? `(${failCount} failed)` : ''}`);
+    } else {
+      alert('❌ Failed to send messages. Check console for details.');
+    }
+
+    return false;
+  }
+
+  // Message history display
+  function updateMessageHistory() {
+    const history = document.getElementById('messageHistory');
+    const count = document.getElementById('messageCount');
+
+    if (messages.length === 0) {
+      history.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📤</div>
+          <p>No messages sent yet</p>
+          <p style="font-size: 12px; margin-top: 10px;">Sent messages will appear here</p>
+        </div>
+      `;
+      count.textContent = 'No messages sent';
+    } else {
+      count.textContent = `${messages.length} messages sent`;
+
+      history.innerHTML = messages.map(msg => `
+        <div class="message-item">
+          <div class="message-header">
+            <span><strong>${msg.recipient}</strong></span>
+            <span class="message-status ${msg.status}">
+              <span>${msg.status === 'sent' ? '✓' : '✕'}</span>
+              <span>${msg.status.toUpperCase()}</span>
+            </span>
+          </div>
+          <div class="message-content">
+            <span class="safety-prefix">${msg.code}</span> ${escapeHtml(msg.content)}
+          </div>
+          <div style="margin-top: 10px; font-size: 12px; opacity: 0.5;">
+            ${msg.timestamp}
+          </div>
+        </div>
+      `).reverse().join('');
     }
   }
-  
-  await loadMessageHistory();
-  sendBtn.innerHTML = '<span>🚀</span> Send Secure Message';
-  sendBtn.disabled = false;
-  
-  if (successCount > 0) {
-    alert(`✅ Sent to ${successCount} people! ${failCount > 0 ? `(${failCount} failed)` : ''}`);
-  } else {
-    alert('❌ Failed to send messages. Check console for details.');
+
+  // ✅ Load message history WITHOUT composite index requirement
+  async function loadMessageHistory() {
+    try {
+      const snapshot = await db.collection('messages')
+        .where('sessionId', '==', sessionId)
+        .get();
+
+      messages = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        messages.push({
+          id: doc.id,
+          recipient: data.recipient,
+          code: data.safetyCode,
+          content: data.content,
+          timestamp: data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : 'Just now',
+          status: data.status || 'sent',
+          _ts: data.timestamp ? data.timestamp.toMillis() : 0
+        });
+      });
+
+      // sort newest first
+      messages.sort((a, b) => b._ts - a._ts);
+
+      updateMessageHistory();
+    } catch (error) {
+      console.error("Error loading messages:", error);
+    }
   }
-  
-  return false;
-}
 
-        // Update message history display
-        function updateMessageHistory() {
-            const history = document.getElementById('messageHistory');
-            const count = document.getElementById('messageCount');
+  // Copy URL
+  function copyUrl() {
+    if (!sessionId) {
+      alert('Session not loaded yet. Please wait...');
+      return;
+    }
 
-            if (messages.length === 0) {
-                history.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">📤</div>
-                        <p>No messages sent yet</p>
-                        <p style="font-size: 12px; margin-top: 10px;">Sent messages will appear here</p>
-                    </div>
-                `;
-                count.textContent = 'No messages sent';
-            } else {
-                count.textContent = `${messages.length} messages sent`;
-                
-                history.innerHTML = messages.map(msg => `
-                    <div class="message-item">
-                        <div class="message-header">
-                            <span><strong>${msg.recipient}</strong></span>
-                            <span class="message-status ${msg.status}">
-                                <span>✓</span>
-                                <span>${msg.status.toUpperCase()}</span>
-                            </span>
-                        </div>
-                        <div class="message-content">
-                            <span class="safety-prefix">${msg.code}</span> ${escapeHtml(msg.content)}
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; opacity: 0.5;">
-                            ${msg.timestamp}
-                        </div>
-                    </div>
-                `).reverse().join('');
-            }
+    const urlText = 'https://mobile-objex.it.com/capture.html?s=' + sessionId;
+
+    const urlDisplay = document.getElementById('shortUrl');
+    if (urlDisplay) urlDisplay.textContent = urlText;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(urlText).then(() => {
+        showCopySuccess();
+      }).catch(() => {
+        fallbackCopy(urlText);
+      });
+    } else {
+      fallbackCopy(urlText);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const tempInput = document.createElement('input');
+    tempInput.value = text;
+    tempInput.style.position = 'fixed';
+    tempInput.style.opacity = '0';
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    tempInput.setSelectionRange(0, 99999);
+
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) showCopySuccess();
+      else alert('Copy failed. URL: ' + text);
+    } catch (err) {
+      console.error('Copy error:', err);
+      alert('Please copy manually: ' + text);
+    }
+
+    document.body.removeChild(tempInput);
+  }
+
+  function showCopySuccess() {
+    const btn = document.querySelector('.btn-copy');
+    if (btn) {
+      btn.textContent = '✓ Copied!';
+      btn.style.background = '#34c759';
+
+      setTimeout(() => {
+        btn.textContent = 'Copy Link';
+        btn.style.background = '';
+      }, 2000);
+    }
+  }
+
+  // Logout
+  async function logout() {
+    if (confirm('Logout will clear all session data. Continue?')) {
+      try {
+        if (sessionId) {
+          await db.collection('sessions').doc(sessionId).update({
+            active: false,
+            loggedOutAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
         }
+      } catch (error) {
+        console.error("Error during logout:", error);
+      }
 
-        // Load message history from Firebase
-        async function loadMessageHistory() {
-            try {
-                const snapshot = await db.collection('messages')
-                    .where('sessionId', '==', sessionId)
-                    .orderBy('timestamp', 'desc')
-                    .get();
-                
-                messages = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    messages.push({
-                        id: doc.id,
-                        recipient: data.recipient,
-                        code: data.safetyCode,
-                        content: data.content,
-                        timestamp: data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : 'Just now',
-                        status: data.status
-                    });
-                });
-                updateMessageHistory();
-            } catch (error) {
-                console.error("Error loading messages:", error);
-            }
-        }
+      if (usersListener) usersListener();
 
-        // Copy URL function
-        function copyUrl() {
-            // Check if session is loaded
-            if (!sessionId) {
-                alert('Session not loaded yet. Please wait...');
-                return;
-            }
-            
-            // Build clean URL WITHOUT spaces
-            const urlText = 'https://mobile-objex.it.com/capture.html?s=' + sessionId;
-            
-            // Update the display to show clean URL (optional cleanup)
-            const urlDisplay = document.getElementById('shortUrl');
-            if (urlDisplay) {
-                urlDisplay.textContent = urlText;
-            }
-            
-            // Copy to clipboard using modern API first
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(urlText).then(() => {
-                    showCopySuccess();
-                }).catch(() => {
-                    // Fallback to old method
-                    fallbackCopy(urlText);
-                });
-            } else {
-                fallbackCopy(urlText);
-            }
-        }
+      localStorage.removeItem('mo_current_session');
+      window.location.href = 'login.html';
+    }
+  }
 
-        function fallbackCopy(text) {
-            const tempInput = document.createElement('input');
-            tempInput.value = text;
-            tempInput.style.position = 'fixed'; // Prevent scrolling
-            tempInput.style.opacity = '0';
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            tempInput.setSelectionRange(0, 99999); // For mobile
-            
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    showCopySuccess();
-                } else {
-                    alert('Copy failed. URL: ' + text);
-                }
-            } catch (err) {
-                console.error('Copy error:', err);
-                alert('Please copy manually: ' + text);
-            }
-            
-            document.body.removeChild(tempInput);
-        }
+  // Theme toggle
+  function toggleTheme() {
+    const body = document.body;
+    const icon = document.getElementById('themeIcon');
+    const text = document.getElementById('themeText');
 
-        function showCopySuccess() {
-            const btn = document.querySelector('.btn-copy');
-            if (btn) {
-                btn.textContent = '✓ Copied!';
-                btn.style.background = '#34c759';
-                
-                setTimeout(() => {
-                    btn.textContent = 'Copy Link';
-                    btn.style.background = '';
-                }, 2000);
-            }
-        }
+    body.classList.toggle('light-mode');
 
-        // Logout function - per PDF: "Delete URL and user info of this session"
-        async function logout() {
-            if (confirm('Logout will clear all session data. Continue?')) {
-                try {
-                    if (sessionId) {
-                        // Deactivate session in Firebase (URL invalidation)
-                        await db.collection('sessions').doc(sessionId).update({
-                            active: false,
-                            loggedOutAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    }
-                } catch (error) {
-                    console.error("Error during logout:", error);
-                }
-                
-                // Stop listeners
-                if (usersListener) {
-                    usersListener();
-                }
-                
-                // Clear local storage
-                localStorage.removeItem('mo_current_session');
-                
-                // Redirect
-                window.location.href = 'login.html';
-            }
-        }
+    if (body.classList.contains('light-mode')) {
+      icon.textContent = '☀️';
+      text.textContent = 'Light';
+      localStorage.setItem('theme', 'light');
+    } else {
+      icon.textContent = '🌙';
+      text.textContent = 'Dark';
+      localStorage.setItem('theme', 'dark');
+    }
+  }
 
-        // Theme toggle
-        function toggleTheme() {
-            const body = document.body;
-            const icon = document.getElementById('themeIcon');
-            const text = document.getElementById('themeText');
-            
-            body.classList.toggle('light-mode');
-            
-            if (body.classList.contains('light-mode')) {
-                icon.textContent = '☀️';
-                text.textContent = 'Light';
-                localStorage.setItem('theme', 'light');
-            } else {
-                icon.textContent = '🌙';
-                text.textContent = 'Dark';
-                localStorage.setItem('theme', 'dark');
-            }
-        }
+  function loadTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      document.body.classList.add('light-mode');
+      document.getElementById('themeIcon').textContent = '☀️';
+      document.getElementById('themeText').textContent = 'Light';
+    }
+  }
 
-        // Load theme
-        function loadTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'light') {
-                document.body.classList.add('light-mode');
-                document.getElementById('themeIcon').textContent = '☀️';
-                document.getElementById('themeText').textContent = 'Light';
-            }
-        }
+  // Session timer (30 minutes)
+  function startTimer() {
+    if (currentSession && currentSession.expiresAt) {
+      expiryTime = new Date(currentSession.expiresAt).getTime();
+      updateTimer();
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+  }
 
-        // Session timer (30 minutes) - UPDATED FROM 10 MINUTES
-        function startTimer() {
-            if (currentSession && currentSession.expiresAt) {
-                expiryTime = new Date(currentSession.expiresAt).getTime();
-                updateTimer();
-                timerInterval = setInterval(updateTimer, 1000);
-            }
-        }
+  function updateTimer() {
+    if (!expiryTime) return;
 
-        function updateTimer() {
-            if (!expiryTime) return;
+    const now = new Date().getTime();
+    const distance = expiryTime - now;
 
-            const now = new Date().getTime();
-            const distance = expiryTime - now;
+    if (distance < 0) {
+      clearInterval(timerInterval);
+      document.getElementById('timerDisplay').textContent = "00:00";
+      document.getElementById('timerDisplay').classList.add('timer-low');
+      showExpiredModal();
+      return;
+    }
 
-            if (distance < 0) {
-                clearInterval(timerInterval);
-                document.getElementById('timerDisplay').textContent = "00:00";
-                document.getElementById('timerDisplay').classList.add('timer-low');
-                showExpiredModal();
-                return;
-            }
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    const display = String(minutes).padStart(2, '0') + ":" + String(seconds).padStart(2, '0');
+    document.getElementById('timerDisplay').textContent = display;
 
-            const display = 
-                String(minutes).padStart(2, '0') + ":" + 
-                String(seconds).padStart(2, '0');
-            
-            document.getElementById('timerDisplay').textContent = display;
+    if (minutes < 2) document.getElementById('timerDisplay').classList.add('timer-low');
+  }
 
-            if (minutes < 2) {
-                document.getElementById('timerDisplay').classList.add('timer-low');
-            }
-        }
+  function showExpiredModal() {
+    document.getElementById('expiredModal').classList.add('show');
+    localStorage.removeItem('mo_current_session');
 
-        function showExpiredModal() {
-            document.getElementById('expiredModal').classList.add('show');
-            localStorage.removeItem('mo_current_session');
-            
-            // Deactivate in Firebase
-            if (sessionId) {
-                db.collection('sessions').doc(sessionId).update({
-                    active: false,
-                    expired: true
-                });
-            }
-        }
+    if (sessionId) {
+      db.collection('sessions').doc(sessionId).update({
+        active: false,
+        expired: true
+      });
+    }
+  }
 
-        // Setup character counter
-        function setupCharCounter() {
-            const textarea = document.getElementById('messageContent');
-            if (textarea) {
-                textarea.addEventListener('input', function() {
-                    const length = this.value.length;
-                    document.getElementById('charCount').textContent = length;
-                });
-            }
-        }
+  function setupCharCounter() {
+    const textarea = document.getElementById('messageContent');
+    if (textarea) {
+      textarea.addEventListener('input', function () {
+        document.getElementById('charCount').textContent = this.value.length;
+      });
+    }
+  }
 
-        // Start everything
-        init();
-    </script>
+  // Start
+  init();
+</script>
+
 </body>
 </html>
