@@ -684,25 +684,26 @@ const firebaseConfig = {
 async function sendConfirmationSMS(phone, safetyCode) {
   const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
   
-  // Initialize Firebase Callable Function (NEW)
-  const sendSMS = firebase.functions().httpsCallable('sendSMS');
-  
   try {
+    // Initialize Firebase Functions
+    const sendSMS = firebase.functions().httpsCallable('sendSMS');
+    
+    console.log('Sending SMS to:', phone); // Debug log
+    
     const result = await sendSMS({
       phone: phone,
       message: message
     });
     
-    console.log('Confirmation SMS sent:', result.data);
+    console.log('SMS Success:', result.data);
     return true;
     
   } catch (error) {
-    console.error('Confirmation SMS failed:', error);
-    // Silent fail - don't ruin user experience if confirmation fails
+    console.error('SMS Error:', error);
+    // Silent fail - don't ruin user experience
     return false;
   }
 }
-
         // Initialize
         validateSession().then(valid => {
             if (valid) {
