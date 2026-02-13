@@ -347,7 +347,7 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   
-  // Initialize Cloud Functions
+  // THIS FIXES THE CORS ERROR - Call Cloud Function instead of Textbelt directly
   const functions = firebase.app().functions("us-central1");
   const sendSMS = functions.httpsCallable("sendSMS");
 
@@ -359,7 +359,6 @@
     return null;
   }
 
-  // Phone formatting (UI)
   document.getElementById('phone').addEventListener('input', function (e) {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length > 0) {
@@ -395,29 +394,28 @@
     const fullMessage = `${safetyCode} ${messageContent}`;
 
     try {
-      // Call Firebase Cloud Function (avoids CORS issues)
+      // CALL CLOUD FUNCTION (No CORS issues!)
       const result = await sendSMS({ 
         phone: phone, 
         message: fullMessage 
       });
       
-      console.log("SECURE SMS RESULT:", result.data);
+      console.log("SMS RESULT:", result.data);
 
       document.getElementById("verificationForm").style.display = "none";
       document.getElementById("successState").classList.add("show");
       document.getElementById("previewCode").textContent = safetyCode;
 
-      // Optional: Log to Firestore for analytics (demo mode)
+      // Log to Firestore
       await db.collection("demo_sends").add({
         phone: phone,
         safetyCode: safetyCode,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        status: 'sent',
-        textId: result.data.textId
+        status: 'sent'
       });
 
     } catch (err) {
-      console.error("SECURE SMS ERROR:", err);
+      console.error("SMS ERROR:", err);
       alert("Failed to send: " + (err.message || "Unknown error"));
       btn.classList.remove("loading");
       btn.disabled = false;
@@ -430,7 +428,6 @@
     document.getElementById('successState').classList.remove('show');
     document.getElementById('submitBtn').classList.remove('loading');
     document.getElementById('submitBtn').disabled = false;
-    document.title = 'Secure Verification | Mobile Objex';
   }
 
   function toggleTheme() {
