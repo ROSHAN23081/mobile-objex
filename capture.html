@@ -533,41 +533,56 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
+  // ✅ USE HTTP FUNCTION (NOT callable)
   const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
 
-  function normalizePhone(input) {
-    const raw = (input || "").trim();
-    if (!raw) return "";
-    if (raw.startsWith("+")) return "+" + raw.slice(1).replace(/[^\d]/g, "");
-    const digits = raw.replace(/[^\d]/g, "");
+  function normalizePhone(raw) {
+    const digits = String(raw || "").replace(/\D/g, "");
+
     if (digits.length === 10) return "+1" + digits;
     if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
-    return "+" + digits;
+
+    return null;
   }
-    function normalizeUSPhoneToE164(raw) {
-  const digits = String(raw || "").replace(/\D/g, "");
-  // US numbers only (since your UI formats US style)
-  if (digits.length === 10) return "+1" + digits;
-  if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
-  // If user pasted +E164 already
-  if (String(raw).trim().startsWith("+") && digits.length >= 10) return "+" + digits;
-  return null;
-}
-  async function postSendSMS(toE164, text) {
-    const res = await fetch(SENDSMS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: toE164, text })
-    });
 
-    const raw = await res.text();
-    let data = {};
-    try { data = JSON.parse(raw); } catch { data = { raw }; }
+  async function sendConfirmationSMS(phoneRaw, safetyCode) {
+    const phone = normalizePhone(phoneRaw);
 
-    if (!res.ok) {
-      throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    if (!phone) {
+      alert("Invalid phone number.");
+      return false;
     }
-    return data; // { ok: true, ... }
+
+    const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
+
+    console.log("SENDING:", { to: phone, text: message });
+
+    try {
+      const response = await fetch(SENDSMS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          to: phone,
+          text: message
+        })
+      });
+
+      const data = await response.json();
+      console.log("SMS RESPONSE:", data);
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "SMS failed");
+      }
+
+      return true;
+
+    } catch (error) {
+      console.error("SMS ERROR:", error);
+      alert("SMS failed: " + error.message);
+      return false;
+    }
   }
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -582,6 +597,7 @@
 
     try {
       const doc = await db.collection('sessions').doc(sessionId).get();
+
       if (!doc.exists) {
         showInvalidSession();
         return false;
@@ -596,8 +612,9 @@
       }
 
       return true;
+
     } catch (error) {
-      console.error("Error validating session:", error);
+      console.error("Session validation error:", error);
       showInvalidSession();
       return false;
     }
@@ -609,60 +626,29 @@
   }
 
   function setupPhoneFormatting() {
-    const phoneInputs = [document.getElementById('phone'), document.getElementById('phoneConfirm')];
+    const inputs = [
+      document.getElementById('phone'),
+      document.getElementById('phoneConfirm')
+    ];
 
-    phoneInputs.forEach(input => {
+    inputs.forEach(input => {
       input.addEventListener('input', function (e) {
         let value = e.target.value.replace(/\D/g, '');
+
         if (value.length > 0) {
           if (value.length <= 3) value = '(' + value;
-          else if (value.length <= 6) value = '(' + value.slice(0, 3) + ') ' + value.slice(3);
-          else value = '(' + value.slice(0, 3) + ') ' + value.slice(3, 6) + '-' + value.slice(6, 10);
+          else if (value.length <= 6)
+            value = '(' + value.slice(0, 3) + ') ' + value.slice(3);
+          else
+            value = '(' + value.slice(0, 3) + ') ' +
+                    value.slice(3, 6) + '-' +
+                    value.slice(6, 10);
         }
+
         e.target.value = value;
       });
     });
   }
-
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
- async function sendConfirmationSMS(phoneRaw, safetyCode) {
-  const phone = normalizeUSPhoneToE164(phoneRaw);
-  if (!phone) {
-    alert("Invalid phone. Please enter a valid US number.");
-    return false;
-  }
-
-  const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
-
-  console.log("SENDING:", { phone, message });
-
-  try {
-    // Force the region explicitly (recommended)
-    const sendSMS = firebase.app().functions("us-central1").httpsCallable("sendSMS");
-
-    const result = await sendSMS({ phone, message });
-
-    // PRINT the real payload clearly
-    console.log("SMS RESULT DATA:", JSON.stringify(result.data, null, 2));
-
-    if (!result.data || result.data.success !== true) {
-      alert("SMS failed: " + (result.data?.error || "Unknown error"));
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error("SMS ERROR:", error);
-    alert("SMS failed: " + (error.message || "Unknown error"));
-    return false;
-  }
-}
-
 
   function setupForm() {
     document.getElementById('captureForm').addEventListener('submit', async function (e) {
@@ -693,9 +679,7 @@
       }
 
       if (safetyCode.length < 4 || safetyCode.length > 6) {
-        alert('Safety code must be between 4 and 6 characters.');
-        document.getElementById('safetyCode').classList.add('error');
-        document.getElementById('safetyCode').focus();
+        alert("Safety code must be 4-6 characters.");
         hasError = true;
       }
 
@@ -704,39 +688,29 @@
       try {
         const phoneE164 = normalizePhone(phone);
 
-        const userData = {
+        await db.collection('users').add({
           sessionId: sessionId,
-
-          // ✅ keep display format for UI
-          phone: phone,                 // existing field used by your UI
-          phoneDisplay: phone,          // new optional display field
-          phoneE164: phoneE164,         // ✅ used for sending
-
+          phone: phone,
+          phoneDisplay: phone,
+          phoneE164: phoneE164,
           safetyCode: safetyCode,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
           status: 'newly entered',
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        await db.collection('users').add(userData);
-
-        document.getElementById('smsPreviewContent').innerHTML =
-          `<span style="color: var(--primary-yellow); font-weight: 700;">${escapeHtml(safetyCode)}</span> Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
+        });
 
         document.getElementById('registrationForm').style.display = 'none';
         document.getElementById('successState').classList.add('show');
 
-        // ✅ send confirmation SMS through your HTTP function
-      await sendConfirmationSMS(phone, safetyCode);
-          
+        await sendConfirmationSMS(phone, safetyCode);
+
       } catch (error) {
-        console.error("Error saving to database:", error);
-        alert('Error saving data. Please try again.');
+        console.error("Database error:", error);
+        alert("Error saving data. Please try again.");
       }
     });
   }
 
-  // Start
   validateSession().then(valid => {
     if (valid) {
       setupPhoneFormatting();
@@ -744,6 +718,7 @@
     }
   });
 </script>
+
 
 </body>
 </html>
