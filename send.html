@@ -1,1822 +1,1308 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Objex | Message Center</title>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
-    <style>
-        :root {
-            --primary-yellow: #F4B942;
-            --primary-yellow-hover: #E5AA33;
-            --primary-glow: rgba(244, 185, 66, 0.6);
-            --bg-dark: #0a0a0f;
-            --bg-light: #f5f5f7;
-            --card-dark: rgba(20, 20, 30, 0.85);
-            --card-light: rgba(255, 255, 255, 0.95);
-            --text-dark: #ffffff;
-            --text-light: #1a1a1f;
-            --accent-glow: rgba(244, 185, 66, 0.4);
-            --border-dark: rgba(244, 185, 66, 0.3);
-            --border-light: rgba(0, 0, 0, 0.1);
-            --input-bg-dark: rgba(10, 10, 15, 0.6);
-            --input-bg-light: rgba(245, 245, 247, 0.8);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            min-height: 100vh;
-            background: var(--bg-dark);
-            color: var(--text-dark);
-            transition: all 0.4s ease;
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        body.light-mode {
-            background: var(--bg-light);
-            color: var(--text-light);
-        }
-
-        /* Animated Background */
-        .bg-grid {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                linear-gradient(rgba(244, 185, 66, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(244, 185, 66, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-            z-index: 0;
-            animation: gridMove 20s linear infinite;
-        }
-
-        @keyframes gridMove {
-            0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
-            100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
-        }
-
-        body.light-mode .bg-grid {
-            background-image: 
-                linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
-        }
-
-        /* Floating Particles */
-        .particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-            overflow: hidden;
-        }
-
-        .particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: var(--primary-yellow);
-            border-radius: 50%;
-            opacity: 0.3;
-            animation: float-particle 15s infinite;
-            box-shadow: 0 0 10px var(--primary-yellow);
-        }
-
-        .particle:nth-child(1) { left: 5%; top: 100%; animation-delay: 0s; animation-duration: 12s; }
-        .particle:nth-child(2) { left: 15%; top: 100%; animation-delay: 2s; animation-duration: 18s; }
-        .particle:nth-child(3) { left: 25%; top: 100%; animation-delay: 4s; animation-duration: 14s; }
-        .particle:nth-child(4) { left: 35%; top: 100%; animation-delay: 6s; animation-duration: 16s; }
-        .particle:nth-child(5) { left: 45%; top: 100%; animation-delay: 8s; animation-duration: 13s; }
-        .particle:nth-child(6) { left: 55%; top: 100%; animation-delay: 10s; animation-duration: 17s; }
-        .particle:nth-child(7) { left: 65%; top: 100%; animation-delay: 12s; animation-duration: 15s; }
-        .particle:nth-child(8) { left: 75%; top: 100%; animation-delay: 14s; animation-duration: 19s; }
-        .particle:nth-child(9) { left: 85%; top: 100%; animation-delay: 16s; animation-duration: 11s; }
-        .particle:nth-child(10) { left: 95%; top: 100%; animation-delay: 18s; animation-duration: 20s; }
-
-        @keyframes float-particle {
-            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
-            10% { opacity: 0.3; }
-            90% { opacity: 0.3; }
-            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
-        }
-
-        /* Animated Orbs */
-        .orb {
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.3;
-            z-index: 0;
-            animation: orb-pulse 8s ease-in-out infinite;
-        }
-
-        .orb-1 {
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, var(--primary-yellow) 0%, transparent 70%);
-            top: -100px;
-            right: -100px;
-            animation-delay: 0s;
-        }
-
-        .orb-2 {
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, var(--primary-yellow) 0%, transparent 70%);
-            bottom: -50px;
-            left: -50px;
-            animation-delay: 4s;
-        }
-
-        @keyframes orb-pulse {
-            0%, 100% { transform: scale(1); opacity: 0.3; }
-            50% { transform: scale(1.2); opacity: 0.5; }
-        }
-
-        /* Navigation */
-        nav {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            padding: 20px 50px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 1000;
-            background: rgba(10, 10, 15, 0.9);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(244, 185, 66, 0.1);
-            transition: all 0.4s ease;
-            animation: slideDown 0.5s ease-out;
-        }
-
-        @keyframes slideDown {
-            from { transform: translateY(-100%); }
-            to { transform: translateY(0); }
-        }
-
-        body.light-mode nav {
-            background: rgba(255, 255, 255, 0.9);
-            border-bottom-color: rgba(0, 0, 0, 0.1);
-        }
-
-        .nav-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 24px;
-            font-weight: 800;
-            text-decoration: none;
-            color: var(--text-dark);
-            transition: all 0.3s ease;
-        }
-
-        .nav-logo:hover {
-            transform: scale(1.05);
-        }
-
-        body.light-mode .nav-logo {
-            color: var(--text-light);
-        }
-
-        .nav-logo span {
-            color: var(--primary-yellow);
-            text-shadow: 0 0 10px var(--primary-glow);
-        }
-
-        /* Logo Icon */
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #F4B942 0%, #FFD700 100%);
-            background-size: 200% 200%;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            animation: gradient-shift 3s ease infinite;
-            box-shadow: 0 4px 15px rgba(244, 185, 66, 0.4);
-        }
-
-        @keyframes gradient-shift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .shield {
-            width: 20px;
-            height: 24px;
-            background: #0a0a0f;
-            clip-path: polygon(50% 0%, 100% 25%, 100% 65%, 50% 100%, 0% 65%, 0% 25%);
-            position: relative;
-        }
-
-        .shield::after {
-            content: '';
-            position: absolute;
-            width: 50%;
-            height: 100%;
-            right: 0;
-            background: rgba(244, 185, 66, 0.3);
-            clip-path: polygon(100% 0%, 100% 100%, 0% 100%, 0% 0%);
-        }
-
-        /* Theme Toggle */
-        .theme-toggle {
-            background: var(--card-dark);
-            border: 1px solid var(--border-dark);
-            border-radius: 50px;
-            padding: 8px 15px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            color: var(--text-dark);
-            font-family: inherit;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        body.light-mode .theme-toggle {
-            background: var(--card-light);
-            border-color: var(--border-light);
-            color: var(--text-light);
-        }
-
-        .theme-toggle:hover {
-            transform: scale(1.05) translateY(-2px);
-            box-shadow: 0 0 30px var(--accent-glow);
-            border-color: var(--primary-yellow);
-        }
-
-        .theme-icon {
-            font-size: 18px;
-            transition: transform 0.3s ease;
-        }
-
-        .theme-toggle:hover .theme-icon {
-            transform: rotate(180deg);
-        }
-
-        /* Session Timer */
-        .session-timer {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(244, 185, 66, 0.1);
-            border: 1px solid var(--border-dark);
-            padding: 8px 15px;
-            border-radius: 50px;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--primary-yellow);
-            transition: all 0.3s ease;
-        }
-
-        .session-timer:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px var(--accent-glow);
-        }
-
-        body.light-mode .session-timer {
-            background: rgba(244, 185, 66, 0.05);
-            border-color: var(--border-light);
-        }
-
-        .timer-display {
-            font-variant-numeric: tabular-nums;
-            min-width: 50px;
-            text-align: center;
-        }
-
-        .timer-low {
-            color: #ff3b30;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        /* User Info */
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 14px;
-            color: var(--primary-yellow);
-        }
-
-        .logout-btn {
-            background: none;
-            border: 1px solid var(--border-dark);
-            color: var(--text-dark);
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        body.light-mode .logout-btn {
-            border-color: var(--border-light);
-            color: var(--text-light);
-        }
-
-        .logout-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 59, 48, 0.1);
-            transition: left 0.3s ease;
-            z-index: -1;
-        }
-
-        .logout-btn:hover::before {
-            left: 0;
-        }
-
-        .logout-btn:hover {
-            border-color: #ff3b30;
-            color: #ff3b30;
-            transform: translateY(-2px);
-        }
-
-        .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        /* Container */
-        .container {
-            position: relative;
-            z-index: 10;
-            max-width: 1200px;
-            margin: 100px auto 40px;
-            padding: 20px;
-        }
-
-        .page-header {
-            margin-bottom: 40px;
-            animation: fadeIn 0.6s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .page-header h1 {
-            font-size: 42px;
-            margin-bottom: 10px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .page-header p {
-            font-size: 18px;
-            opacity: 0.7;
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            border-bottom: 1px solid var(--border-dark);
-            padding-bottom: 0;
-        }
-
-        body.light-mode .tabs {
-            border-bottom-color: var(--border-light);
-        }
-
-        .tab {
-            padding: 12px 24px;
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            color: var(--text-dark);
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.6;
-        }
-
-        body.light-mode .tab {
-            color: var(--text-light);
-        }
-
-        .tab:hover {
-            opacity: 1;
-            color: var(--primary-yellow);
-        }
-
-        .tab.active {
-            opacity: 1;
-            color: var(--primary-yellow);
-            border-bottom-color: var(--primary-yellow);
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-
-        /* Content Grid */
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
-
-        @media (max-width: 968px) {
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-            nav {
-                padding: 15px 20px;
-            }
-        }
-
-        /* Cards */
-        .card {
-            background: var(--card-dark);
-            border: 1px solid var(--border-dark);
-            border-radius: 24px;
-            padding: 40px;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(244, 185, 66, 0.1);
-            transition: all 0.4s ease;
-            animation: slideUp 0.6s ease-out 0.2s both;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(45deg, transparent, var(--primary-yellow), transparent);
-            z-index: -1;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            border-radius: 26px;
-        }
-
-        .card:hover::before {
-            opacity: 0.2;
-            animation: border-glow 2s linear infinite;
-        }
-
-        @keyframes border-glow {
-            0%, 100% { filter: blur(10px); }
-            50% { filter: blur(20px); }
-        }
-
-        body.light-mode .card {
-            background: var(--card-light);
-            border-color: var(--border-light);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6), 0 0 30px rgba(244, 185, 66, 0.2);
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border-dark);
-        }
-
-        body.light-mode .card-header {
-            border-bottom-color: var(--border-light);
-        }
-
-        .card-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, rgba(244, 185, 66, 0.2) 0%, rgba(244, 185, 66, 0.1) 100%);
-            border: 1px solid var(--border-dark);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            transition: all 0.3s ease;
-        }
-
-        .card:hover .card-icon {
-            transform: scale(1.1) rotate(5deg);
-            background: linear-gradient(135deg, rgba(244, 185, 66, 0.3) 0%, rgba(244, 185, 66, 0.2) 100%);
-        }
-
-        .card-title h2 {
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-
-        .card-title p {
-            font-size: 14px;
-            opacity: 0.6;
-        }
-
-        /* Form Styles */
-        .form-group {
-            margin-bottom: 24px;
-            position: relative;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-            color: var(--primary-yellow);
-            transition: all 0.3s ease;
-        }
-
-        .form-textarea {
-            width: 100%;
-            padding: 16px 20px;
-            border: 2px solid var(--border-dark);
-            border-radius: 12px;
-            background: var(--input-bg-dark);
-            color: var(--text-dark);
-            font-size: 16px;
-            font-family: inherit;
-            transition: all 0.3s ease;
-            outline: none;
-            resize: vertical;
-            min-height: 150px;
-        }
-
-        body.light-mode .form-textarea {
-            background: var(--input-bg-light);
-            color: var(--text-light);
-            border-color: var(--border-light);
-        }
-
-        .form-textarea:focus {
-            border-color: var(--primary-yellow);
-            box-shadow: 0 0 0 4px var(--accent-glow), 0 0 20px var(--primary-glow);
-            transform: translateY(-2px);
-        }
-
-        .char-counter {
-            text-align: right;
-            font-size: 12px;
-            opacity: 0.5;
-            margin-top: 5px;
-        }
-
-        /* Buttons */
-        .btn {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, #F4B942 0%, #E5AA33 50%, #F4B942 100%);
-            background-size: 200% 200%;
-            color: #0a0a0f;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(244, 185, 66, 0.3);
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .btn:hover::before {
-            left: 100%;
-        }
-
-        .btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(244, 185, 66, 0.5), 0 0 40px rgba(244, 185, 66, 0.3);
-            animation: gradient-shift 2s ease infinite;
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-secondary {
-            background: transparent;
-            border: 2px solid var(--border-dark);
-            color: var(--text-dark);
-        }
-
-        body.light-mode .btn-secondary {
-            border-color: var(--border-light);
-            color: var(--text-light);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--primary-yellow);
-            background: rgba(244, 185, 66, 0.1);
-            box-shadow: 0 0 30px var(--accent-glow);
-        }
-
-        /* URL Box */
-        .url-box {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-dark);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-        }
-
-        body.light-mode .url-box {
-            background: rgba(0, 0, 0, 0.05);
-            border-color: var(--border-light);
-        }
-
-        .url-text {
-            font-family: monospace;
-            font-size: 13px;
-            color: var(--primary-yellow);
-            word-break: break-all;
-        }
-
-        .btn-copy {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid var(--border-dark);
-            color: var(--text-dark);
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            white-space: nowrap;
-            transition: all 0.3s ease;
-        }
-
-        body.light-mode .btn-copy {
-            background: rgba(0, 0, 0, 0.1);
-            border-color: var(--border-light);
-            color: var(--text-light);
-        }
-
-        .btn-copy:hover {
-            background: var(--primary-yellow);
-            color: #0a0a0f;
-            border-color: var(--primary-yellow);
-        }
-
-        /* Recipients List */
-        .recipients-list {
-            max-height: 300px;
-            overflow-y: auto;
-            margin-bottom: 20px;
-        }
-
-        .recipient-item {
-            background: rgba(244, 185, 66, 0.05);
-            border: 1px solid var(--border-dark);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.3s ease;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        body.light-mode .recipient-item {
-            background: rgba(244, 185, 66, 0.03);
-            border-color: var(--border-light);
-        }
-
-        .recipient-item:hover {
-            border-color: var(--primary-yellow);
-            transform: translateX(5px);
-        }
-
-        .recipient-info {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .recipient-phone {
-            font-weight: 600;
-            font-size: 16px;
-        }
-
-        .recipient-code {
-            font-size: 12px;
-            color: var(--primary-yellow);
-            font-family: monospace;
-        }
-
-        .recipient-checkbox {
-            width: 24px;
-            height: 24px;
-            accent-color: var(--primary-yellow);
-            cursor: pointer;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            opacity: 0.5;
-        }
-
-        .empty-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        /* Message History */
-        .message-history {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .message-item {
-            background: rgba(244, 185, 66, 0.05);
-            border: 1px solid var(--border-dark);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 15px;
-            transition: all 0.3s ease;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        body.light-mode .message-item {
-            background: rgba(244, 185, 66, 0.03);
-            border-color: var(--border-light);
-        }
-
-        .message-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-
-        .message-status {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            color: #34c759;
-            font-weight: 600;
-        }
-
-        .message-status.failed {
-            color: #ff3b30;
-        }
-
-        .message-content {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            line-height: 1.5;
-            border-left: 3px solid var(--primary-yellow);
-        }
-
-        body.light-mode .message-content {
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        .safety-prefix {
-            color: var(--primary-yellow);
-            font-weight: 700;
-        }
-
-        /* Safety Notice */
-        .safety-notice {
-            background: rgba(244, 185, 66, 0.1);
-            border: 1px solid var(--border-dark);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        body.light-mode .safety-notice {
-            background: rgba(244, 185, 66, 0.05);
-            border-color: var(--border-light);
-        }
-        
-        body.light-mode .spam-notice {
-    background: rgba(244, 185, 66, 0.03);
-    border-color: var(--border-light);
-}
-        .safety-notice .icon {
-            color: var(--primary-yellow);
-            font-size: 20px;
-        }
-
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            backdrop-filter: blur(10px);
-        }
-
-        .modal-overlay.show {
-            display: flex;
-        }
-
-        .modal {
-            background: var(--card-dark);
-            border: 1px solid var(--border-dark);
-            border-radius: 24px;
-            padding: 40px;
-            max-width: 400px;
-            text-align: center;
-            animation: modalSlide 0.3s ease;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(244, 185, 66, 0.3);
-        }
-
-        @keyframes modalSlide {
-            from { opacity: 0; transform: scale(0.9) translateY(20px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        .modal-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-
-        .modal h2 {
-            margin-bottom: 10px;
-            color: #ff3b30;
-        }
-
-        .modal p {
-            margin-bottom: 25px;
-            opacity: 0.7;
-        }
-
-        /* Users List Table */
-        .users-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        .users-table th,
-        .users-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-dark);
-        }
-
-        body.light-mode .users-table th,
-        body.light-mode .users-table td {
-            border-bottom-color: var(--border-light);
-        }
-
-        .users-table th {
-            color: var(--primary-yellow);
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-        }
-
-        .users-table tr:hover {
-            background: rgba(244, 185, 66, 0.05);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-new {
-            background: rgba(52, 199, 89, 0.2);
-            color: #34c759;
-        }
-
-        .status-sent {
-            background: rgba(244, 185, 66, 0.2);
-            color: var(--primary-yellow);
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mobile Objex | Message Center</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
+
+  <style>
+    :root {
+      --primary-yellow: #F4B942;
+      --primary-yellow-hover: #E5AA33;
+      --primary-glow: rgba(244, 185, 66, 0.6);
+      --bg-dark: #0a0a0f;
+      --bg-light: #f5f5f7;
+      --card-dark: rgba(20, 20, 30, 0.85);
+      --card-light: rgba(255, 255, 255, 0.95);
+      --text-dark: #ffffff;
+      --text-light: #1a1a1f;
+      --accent-glow: rgba(244, 185, 66, 0.4);
+      --border-dark: rgba(244, 185, 66, 0.3);
+      --border-light: rgba(0, 0, 0, 0.1);
+      --input-bg-dark: rgba(10, 10, 15, 0.6);
+      --input-bg-light: rgba(245, 245, 247, 0.8);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100vh;
+      background: var(--bg-dark);
+      color: var(--text-dark);
+      transition: all 0.4s ease;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body.light-mode { background: var(--bg-light); color: var(--text-light); }
+
+    .bg-grid {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-image:
+        linear-gradient(rgba(244, 185, 66, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(244, 185, 66, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+      z-index: 0;
+      animation: gridMove 20s linear infinite;
+    }
+
+    @keyframes gridMove {
+      0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
+      100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
+    }
+
+    body.light-mode .bg-grid {
+      background-image:
+        linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+    }
+
+    .particles {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 1; overflow: hidden;
+    }
+
+    .particle {
+      position: absolute; width: 4px; height: 4px;
+      background: var(--primary-yellow); border-radius: 50%;
+      opacity: 0.3;
+      animation: float-particle 15s infinite;
+      box-shadow: 0 0 10px var(--primary-yellow);
+    }
+
+    .particle:nth-child(1) { left: 5%; top: 100%; animation-delay: 0s; animation-duration: 12s; }
+    .particle:nth-child(2) { left: 15%; top: 100%; animation-delay: 2s; animation-duration: 18s; }
+    .particle:nth-child(3) { left: 25%; top: 100%; animation-delay: 4s; animation-duration: 14s; }
+    .particle:nth-child(4) { left: 35%; top: 100%; animation-delay: 6s; animation-duration: 16s; }
+    .particle:nth-child(5) { left: 45%; top: 100%; animation-delay: 8s; animation-duration: 13s; }
+    .particle:nth-child(6) { left: 55%; top: 100%; animation-delay: 10s; animation-duration: 17s; }
+    .particle:nth-child(7) { left: 65%; top: 100%; animation-delay: 12s; animation-duration: 15s; }
+    .particle:nth-child(8) { left: 75%; top: 100%; animation-delay: 14s; animation-duration: 19s; }
+    .particle:nth-child(9) { left: 85%; top: 100%; animation-delay: 16s; animation-duration: 11s; }
+    .particle:nth-child(10) { left: 95%; top: 100%; animation-delay: 18s; animation-duration: 20s; }
+
+    @keyframes float-particle {
+      0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.3; }
+      90% { opacity: 0.3; }
+      100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+    }
+
+    .orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(80px); opacity: 0.3; z-index: 0;
+      animation: orb-pulse 8s ease-in-out infinite;
+    }
+
+    .orb-1 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, var(--primary-yellow) 0%, transparent 70%);
+      top: -100px; right: -100px; animation-delay: 0s;
+    }
+
+    .orb-2 {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, var(--primary-yellow) 0%, transparent 70%);
+      bottom: -50px; left: -50px; animation-delay: 4s;
+    }
+
+    @keyframes orb-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.3; }
+      50% { transform: scale(1.2); opacity: 0.5; }
+    }
+
+    nav {
+      position: fixed; top: 0; width: 100%;
+      padding: 20px 50px;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 1000;
+      background: rgba(10, 10, 15, 0.9);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(244, 185, 66, 0.1);
+      transition: all 0.4s ease;
+      animation: slideDown 0.5s ease-out;
+    }
+
+    @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+
+    body.light-mode nav { background: rgba(255, 255, 255, 0.9); border-bottom-color: rgba(0, 0, 0, 0.1); }
+
+    .nav-logo {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 24px; font-weight: 800; text-decoration: none;
+      color: var(--text-dark);
+      transition: all 0.3s ease;
+    }
+    .nav-logo:hover { transform: scale(1.05); }
+    body.light-mode .nav-logo { color: var(--text-light); }
+    .nav-logo span { color: var(--primary-yellow); text-shadow: 0 0 10px var(--primary-glow); }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #F4B942 0%, #FFD700 100%);
+      background-size: 200% 200%;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      animation: gradient-shift 3s ease infinite;
+      box-shadow: 0 4px 15px rgba(244, 185, 66, 0.4);
+    }
+
+    @keyframes gradient-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+    .shield {
+      width: 20px; height: 24px;
+      background: #0a0a0f;
+      clip-path: polygon(50% 0%, 100% 25%, 100% 65%, 50% 100%, 0% 65%, 0% 25%);
+      position: relative;
+    }
+    .shield::after {
+      content: '';
+      position: absolute; width: 50%; height: 100%; right: 0;
+      background: rgba(244, 185, 66, 0.3);
+      clip-path: polygon(100% 0%, 100% 100%, 0% 100%, 0% 0%);
+    }
+
+    .theme-toggle {
+      background: var(--card-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: 50px;
+      padding: 8px 15px;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 10px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      color: var(--text-dark);
+      font-family: inherit;
+      font-size: 12px; font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    body.light-mode .theme-toggle { background: var(--card-light); border-color: var(--border-light); color: var(--text-light); }
+    .theme-toggle:hover { transform: scale(1.05) translateY(-2px); box-shadow: 0 0 30px var(--accent-glow); border-color: var(--primary-yellow); }
+
+    .theme-icon { font-size: 18px; transition: transform 0.3s ease; }
+    .theme-toggle:hover .theme-icon { transform: rotate(180deg); }
+
+    .session-timer {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(244, 185, 66, 0.1);
+      border: 1px solid var(--border-dark);
+      padding: 8px 15px;
+      border-radius: 50px;
+      font-size: 14px; font-weight: 600;
+      color: var(--primary-yellow);
+      transition: all 0.3s ease;
+    }
+    .session-timer:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--accent-glow); }
+    body.light-mode .session-timer { background: rgba(244, 185, 66, 0.05); border-color: var(--border-light); }
+
+    .timer-display { font-variant-numeric: tabular-nums; min-width: 50px; text-align: center; }
+    .timer-low { color: #ff3b30; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .user-info { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--primary-yellow); }
+
+    .logout-btn {
+      background: none;
+      border: 1px solid var(--border-dark);
+      color: var(--text-dark);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+    }
+    body.light-mode .logout-btn { border-color: var(--border-light); color: var(--text-light); }
+    .logout-btn::before {
+      content: '';
+      position: absolute; top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: rgba(255, 59, 48, 0.1);
+      transition: left 0.3s ease;
+      z-index: -1;
+    }
+    .logout-btn:hover::before { left: 0; }
+    .logout-btn:hover { border-color: #ff3b30; color: #ff3b30; transform: translateY(-2px); }
+
+    .nav-right { display: flex; align-items: center; gap: 15px; }
+
+    .container { position: relative; z-index: 10; max-width: 1200px; margin: 100px auto 40px; padding: 20px; }
+
+    .page-header { margin-bottom: 40px; animation: fadeIn 0.6s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .page-header h1 { font-size: 42px; margin-bottom: 10px; font-weight: 800; display: flex; align-items: center; gap: 15px; }
+    .page-header p { font-size: 18px; opacity: 0.7; }
+
+    .tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 1px solid var(--border-dark); padding-bottom: 0; }
+    body.light-mode .tabs { border-bottom-color: var(--border-light); }
+    .tab {
+      padding: 12px 24px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--text-dark);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.6;
+    }
+    body.light-mode .tab { color: var(--text-light); }
+    .tab:hover { opacity: 1; color: var(--primary-yellow); }
+    .tab.active { opacity: 1; color: var(--primary-yellow); border-bottom-color: var(--primary-yellow); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+
+    .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    @media (max-width: 968px) { .content-grid { grid-template-columns: 1fr; } nav { padding: 15px 20px; } }
+
+    .card {
+      background: var(--card-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: 24px;
+      padding: 40px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(244, 185, 66, 0.1);
+      transition: all 0.4s ease;
+      animation: slideUp 0.6s ease-out 0.2s both;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -2px; left: -2px; right: -2px; bottom: -2px;
+      background: linear-gradient(45deg, transparent, var(--primary-yellow), transparent);
+      z-index: -1;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      border-radius: 26px;
+    }
+    .card:hover::before { opacity: 0.2; animation: border-glow 2s linear infinite; }
+    @keyframes border-glow { 0%, 100% { filter: blur(10px); } 50% { filter: blur(20px); } }
+    body.light-mode .card { background: var(--card-light); border-color: var(--border-light); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15); }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6), 0 0 30px rgba(244, 185, 66, 0.2); }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+    .card-header {
+      display: flex; align-items: center; gap: 15px;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-dark);
+    }
+    body.light-mode .card-header { border-bottom-color: var(--border-light); }
+
+    .card-icon {
+      width: 50px; height: 50px;
+      background: linear-gradient(135deg, rgba(244, 185, 66, 0.2) 0%, rgba(244, 185, 66, 0.1) 100%);
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      transition: all 0.3s ease;
+    }
+    .card:hover .card-icon {
+      transform: scale(1.1) rotate(5deg);
+      background: linear-gradient(135deg, rgba(244, 185, 66, 0.3) 0%, rgba(244, 185, 66, 0.2) 100%);
+    }
+
+    .card-title h2 { font-size: 24px; margin-bottom: 5px; }
+    .card-title p { font-size: 14px; opacity: 0.6; }
+
+    .form-group { margin-bottom: 24px; position: relative; }
+    .form-label {
+      display: block;
+      font-size: 12px; font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      color: var(--primary-yellow);
+      transition: all 0.3s ease;
+    }
+
+    .form-textarea {
+      width: 100%;
+      padding: 16px 20px;
+      border: 2px solid var(--border-dark);
+      border-radius: 12px;
+      background: var(--input-bg-dark);
+      color: var(--text-dark);
+      font-size: 16px;
+      font-family: inherit;
+      transition: all 0.3s ease;
+      outline: none;
+      resize: vertical;
+      min-height: 150px;
+    }
+    body.light-mode .form-textarea { background: var(--input-bg-light); color: var(--text-light); border-color: var(--border-light); }
+    .form-textarea:focus {
+      border-color: var(--primary-yellow);
+      box-shadow: 0 0 0 4px var(--accent-glow), 0 0 20px var(--primary-glow);
+      transform: translateY(-2px);
+    }
+    .char-counter { text-align: right; font-size: 12px; opacity: 0.5; margin-top: 5px; }
+
+    .btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, #F4B942 0%, #E5AA33 50%, #F4B942 100%);
+      background-size: 200% 200%;
+      color: #0a0a0f;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(244, 185, 66, 0.3);
+    }
+    .btn::before {
+      content: '';
+      position: absolute; top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: left 0.5s ease;
+    }
+    .btn:hover::before { left: 100%; }
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(244, 185, 66, 0.5), 0 0 40px rgba(244, 185, 66, 0.3);
+      animation: gradient-shift 2s ease infinite;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .url-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    body.light-mode .url-box { background: rgba(0, 0, 0, 0.05); border-color: var(--border-light); }
+    .url-text { font-family: monospace; font-size: 13px; color: var(--primary-yellow); word-break: break-all; }
+
+    .btn-copy {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--border-dark);
+      color: var(--text-dark);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all 0.3s ease;
+    }
+    body.light-mode .btn-copy { background: rgba(0, 0, 0, 0.1); border-color: var(--border-light); color: var(--text-light); }
+    .btn-copy:hover { background: var(--primary-yellow); color: #0a0a0f; border-color: var(--primary-yellow); }
+
+    .recipients-list { max-height: 300px; overflow-y: auto; margin-bottom: 20px; }
+
+    .recipient-item {
+      background: rgba(244, 185, 66, 0.05);
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+      transition: all 0.3s ease;
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+    body.light-mode .recipient-item { background: rgba(244, 185, 66, 0.03); border-color: var(--border-light); }
+    .recipient-item:hover { border-color: var(--primary-yellow); transform: translateX(5px); }
+
+    .recipient-info { display: flex; flex-direction: column; gap: 5px; }
+    .recipient-phone { font-weight: 600; font-size: 16px; }
+    .recipient-code { font-size: 12px; color: var(--primary-yellow); font-family: monospace; }
+
+    .recipient-checkbox { width: 24px; height: 24px; accent-color: var(--primary-yellow); cursor: pointer; }
+
+    .empty-state { text-align: center; padding: 60px 20px; opacity: 0.5; }
+    .empty-icon { font-size: 48px; margin-bottom: 15px; animation: bounce 2s infinite; }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+    .message-history { max-height: 400px; overflow-y: auto; }
+    .message-item {
+      background: rgba(244, 185, 66, 0.05);
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      transition: all 0.3s ease;
+      animation: slideIn 0.3s ease-out;
+    }
+    body.light-mode .message-item { background: rgba(244, 185, 66, 0.03); border-color: var(--border-light); }
+
+    .message-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 14px; }
+    .message-status { display: flex; align-items: center; gap: 5px; color: #34c759; font-weight: 600; }
+    .message-status.failed { color: #ff3b30; }
+
+    .message-content {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.5;
+      border-left: 3px solid var(--primary-yellow);
+    }
+    body.light-mode .message-content { background: rgba(0, 0, 0, 0.05); }
+
+    .safety-prefix { color: var(--primary-yellow); font-weight: 700; }
+
+    .safety-notice {
+      background: rgba(244, 185, 66, 0.1);
+      border: 1px solid var(--border-dark);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      display: flex; align-items: center; gap: 10px;
+      animation: fadeIn 0.3s ease-out;
+    }
+    body.light-mode .safety-notice { background: rgba(244, 185, 66, 0.05); border-color: var(--border-light); }
+    body.light-mode .spam-notice { background: rgba(244, 185, 66, 0.03); border-color: var(--border-light); }
+    .safety-notice .icon { color: var(--primary-yellow); font-size: 20px; }
+
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center; justify-content: center;
+      z-index: 2000;
+      backdrop-filter: blur(10px);
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: var(--card-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 400px;
+      text-align: center;
+      animation: modalSlide 0.3s ease;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(244, 185, 66, 0.3);
+    }
+    @keyframes modalSlide { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+    .modal-icon { font-size: 64px; margin-bottom: 20px; animation: pulse 2s infinite; }
+    .modal h2 { margin-bottom: 10px; color: #ff3b30; }
+    .modal p { margin-bottom: 25px; opacity: 0.7; }
+
+    .users-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .users-table th, .users-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border-dark); }
+    body.light-mode .users-table th, body.light-mode .users-table td { border-bottom-color: var(--border-light); }
+    .users-table th { color: var(--primary-yellow); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+    .users-table tr:hover { background: rgba(244, 185, 66, 0.05); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .status-new { background: rgba(52, 199, 89, 0.2); color: #34c759; }
+    .status-sent { background: rgba(244, 185, 66, 0.2); color: var(--primary-yellow); }
+  </style>
 </head>
+
 <body>
-    <div class="bg-grid"></div>
-    <div class="particles">
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
+  <div class="bg-grid"></div>
+  <div class="particles">
+    <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+    <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  </div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav>
+    <a href="#" class="nav-logo" onclick="return false;">
+      <div class="logo-icon"><div class="shield"></div></div>
+      Mobile<span>Objex</span>
+    </a>
+    <div class="nav-right">
+      <div class="session-timer" id="sessionTimer">
+        <span>⏱️</span>
+        <span class="timer-display" id="timerDisplay">30:00</span>
+      </div>
+      <div class="user-info" id="userInfo">
+        <span id="usernameDisplay"></span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon" id="themeIcon">🌙</span>
+        <span id="themeText">Dark</span>
+      </button>
     </div>
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
+  </nav>
 
-    <nav>
-        <a href="#" class="nav-logo" onclick="return false;">
-            <div class="logo-icon">
-                <div class="shield"></div>
-            </div>
-            Mobile<span>Objex</span>
-        </a>
-        <div class="nav-right">
-            <div class="session-timer" id="sessionTimer">
-                <span>⏱️</span>
-                <span class="timer-display" id="timerDisplay">30:00</span>
-            </div>
-            <div class="user-info" id="userInfo">
-                <span id="usernameDisplay"></span>
-                <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-            <button class="theme-toggle" onclick="toggleTheme()">
-                <span class="theme-icon" id="themeIcon">🌙</span>
-                <span id="themeText">Dark</span>
-            </button>
-        </div>
-    </nav>
-
-    <div class="container">
-        <div class="page-header">
-            <h1>📤 Message Center</h1>
-            <p>Secure Messaging Dashboard - Manage recipients and send verified messages</p>
-        </div>
-
-        <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('users')" id="tab-users">Users</button>
-            <button class="tab" onclick="switchTab('campaign')" id="tab-campaign">Campaign</button>
-        </div>
-
-        <!-- Users Tab -->
-        <div id="content-users" class="tab-content active">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">👥</div>
-                    <div class="card-title">
-                        <h2>Registered Users</h2>
-                        <p id="usersCount">No users registered</p>
-                    </div>
-                </div>
-
-                <div class="url-box">
-                    <div class="url-text" id="shortUrl">Loading...</div>
-                    <button class="btn-copy" onclick="copyUrl()">Copy Link</button>
-                </div>
-
-                <div id="usersTableContainer">
-                    <div class="empty-state">
-                        <div class="empty-icon">📭</div>
-                        <p>No users registered in this session</p>
-                        <p style="font-size: 12px; margin-top: 10px;">Share the link above to add users</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Campaign Tab -->
-        <div id="content-campaign" class="tab-content">
-            <div class="content-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-icon">📱</div>
-                        <div class="card-title">
-                            <h2>Select Recipients</h2>
-                            <p id="recipientCount">No recipients available</p>
-                        </div>
-                    </div>
-
-                    <div class="recipients-list" id="recipientsList">
-                        <div class="empty-state">
-                            <div class="empty-icon">📭</div>
-                            <p>No recipients captured in this session</p>
-                            <p style="font-size: 12px; margin-top: 10px;">Switch to Users tab to get the registration link</p>
-                        </div>
-                    </div>
-
-                    <div class="card-header" style="margin-top: 20px;">
-                        <div class="card-icon">✉️</div>
-                        <div class="card-title">
-                            <h2>Compose Message</h2>
-                            <p>SMS will be sent with Safety Code prefix</p>
-                        </div>
-                    </div>
-
-                    <div class="safety-notice">
-                        <span class="icon">🛡️</span>
-                        <span><strong>Safety Code Protection:</strong> Safety code will be automatically prefixed to all messages for verification.</span>
-                    </div>
-
-                    <form id="sendForm" onsubmit="handleSend(event)">
-                        <div class="form-group">
-                            <label class="form-label">Message Content *</label>
-                            <textarea class="form-textarea" id="messageContent" placeholder="Enter your secure message here..." maxlength="1600" required></textarea>
-                            <div class="char-counter">
-                                <span id="charCount">0</span> / 1600 characters
-                            </div>
-                        </div>
-                        <!-- Add this after the closing </form> tag in the Campaign tab -->
-<div class="spam-notice" style="background: rgba(244, 185, 66, 0.05); border: 1px solid var(--border-dark); border-radius: 12px; padding: 16px; margin-top: 20px; display: flex; align-items: flex-start; gap: 12px; font-size: 13px; animation: fadeIn 0.5s ease;">
-    <span style="font-size: 20px; flex-shrink: 0;">📧</span>
-    <div>
-        <strong style="color: var(--primary-yellow); display: block; margin-bottom: 4px;">Didn't receive the message?</strong>
-        <span style="opacity: 0.8;">If you did not receive the text message, please check your spam folder.</span>
-    </div>
-</div>
-                        <!-- Message Preview -->
-                        <div class="safety-notice" style="margin-bottom: 20px;">
-                            <span class="icon">👁️</span>
-                            <div>
-                                <strong>Preview:</strong><br>
-                                <span id="previewText" style="font-family: monospace; font-size: 13px;">
-                                    <span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> Your message will appear here...
-                                </span>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn" id="sendBtn" disabled>
-                            <span>🚀</span>
-                            Send Secure Message
-                        </button>
-                    </form>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-icon">📨</div>
-                        <div class="card-title">
-                            <h2>Message History</h2>
-                            <p id="messageCount">No messages sent</p>
-                        </div>
-                    </div>
-
-                    <div class="message-history" id="messageHistory">
-                        <div class="empty-state">
-                            <div class="empty-icon">📤</div>
-                            <p>No messages sent yet</p>
-                            <p style="font-size: 12px; margin-top: 10px;">Sent messages will appear here</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="container">
+    <div class="page-header">
+      <h1>📤 Message Center</h1>
+      <p>Secure Messaging Dashboard - Manage recipients and send verified messages</p>
     </div>
 
-    <div class="modal-overlay" id="expiredModal">
-        <div class="modal">
-            <div class="modal-icon">⏰</div>
-            <h2>Session Expired</h2>
-            <p>Your session has expired for security reasons. All data has been purged per Mobile Objex security protocols.</p>
-            <button class="btn" onclick="logout()">Return to Login</button>
-        </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('users')" id="tab-users">Users</button>
+      <button class="tab" onclick="switchTab('campaign')" id="tab-campaign">Campaign</button>
     </div>
 
-   <script>
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
-    authDomain: "mobile-objex.firebaseapp.com",
-    projectId: "mobile-objex",
-    storageBucket: "mobile-objex.firebasestorage.app",
-    messagingSenderId: "875499185931",
-    appId: "1:875499185931:web:6f90c12f6a69649065640e"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-       // ✅ Always call the deployed function in the correct region
-const sendSMS = firebase.app().functions("us-central1").httpsCallable("sendSMS");
-
-// ✅ alias so your existing code works
-const normalizeUSPhoneToE164 = normalizePhone;
-
-
-  // ✅ Your deployed HTTP function URL
-  const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
-
-       function normalizeUSPhoneToE164(raw) {
-  const digits = String(raw || "").replace(/\D/g, "");
-  // US numbers only (since your UI formats US style)
-  if (digits.length === 10) return "+1" + digits;
-  if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
-  // If user pasted +E164 already
-  if (String(raw).trim().startsWith("+") && digits.length >= 10) return "+" + digits;
-  return null;
-}
-
-
-  // Global variables
-  let currentSession = null;
-  let sessionId = null;
-  let usersListener = null;
-  let messages = [];
-  let timerInterval = null;
-  let expiryTime = null;
-
-  // -------------------------
-  // Helpers (IMPORTANT)
-  // -------------------------
-  function normalizePhone(input) {
-    const raw = (input || "").trim();
-    if (!raw) return "";
-
-    // if already starts with +, keep + and strip non-digits
-    if (raw.startsWith("+")) return "+" + raw.slice(1).replace(/[^\d]/g, "");
-
-    const digits = raw.replace(/[^\d]/g, "");
-
-    // US default behavior:
-    if (digits.length === 10) return "+1" + digits;
-    if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
-
-    // fallback
-    return "+" + digits;
-  }
-
-  async function postSendSMS(toE164, text) {
-    const res = await fetch(SENDSMS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: toE164, text })
-    });
-
-    const raw = await res.text();
-    let data = {};
-    try { data = JSON.parse(raw); } catch { data = { raw }; }
-
-    if (!res.ok) {
-      const msg = data.error || data.message || `HTTP ${res.status}`;
-      const err = new Error(msg);
-      err.status = res.status;
-      err.data = data;
-      throw err;
-    }
-
-    return data; // expected: { ok: true, ... }
-  }
-
-  // -------------------------
-  // Initialize page
-  // -------------------------
-  async function init() {
-    await checkAuth();          // ✅ await fixes timer issue
-    loadTheme();
-    startTimer();
-    setupCharCounter();
-    setupMessagePreview();
-  }
-
-  // Tab switching
-  function switchTab(tabName) {
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-    document.getElementById('tab-' + tabName).classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById('content-' + tabName).classList.add('active');
-  }
-
-  // Check authentication and setup realtime listeners
-  async function checkAuth() {
-    const sessionStr = localStorage.getItem('mo_current_session');
-
-    if (!sessionStr) {
-      window.location.href = 'login.html';
-      return;
-    }
-
-    try {
-      currentSession = JSON.parse(sessionStr);
-      sessionId = currentSession.sessionId;
-
-      // Verify with Firebase that session exists and is active
-      const doc = await db.collection('sessions').doc(sessionId).get();
-      if (!doc.exists || !doc.data().active) {
-        showExpiredModal();
-        return;
-      }
-
-      // Check expiry
-      if (new Date(currentSession.expiresAt) < new Date()) {
-        showExpiredModal();
-        return;
-      }
-
-      // Display username
-      document.getElementById('usernameDisplay').textContent = currentSession.name || currentSession.username;
-      document.getElementById('shortUrl').textContent = currentSession.captureUrl;
-
-      // Setup realtime listener for users
-      setupUsersListener();
-
-      // Load message history
-      loadMessageHistory();
-
-    } catch (e) {
-      console.error('Session error:', e);
-      logout();
-    }
-  }
-
-  // Realtime listener for users
-  function setupUsersListener() {
-    usersListener = db.collection('users')
-      .where('sessionId', '==', sessionId)
-      .onSnapshot(snapshot => {
-        const users = [];
-        snapshot.forEach(doc => {
-          users.push({ id: doc.id, ...doc.data() });
-        });
-
-        // Sort manually
-        users.sort((a, b) => {
-          const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
-          const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
-          return timeB - timeA;
-        });
-
-        updateUsersUI(users);
-      }, error => {
-        console.error("Error listening to users:", error);
-      });
-  }
-
-  // Update UI with user data
-  function updateUsersUI(users) {
-    const container = document.getElementById('usersTableContainer');
-    const count = document.getElementById('usersCount');
-
-    if (users.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📭</div>
-          <p>No users registered in this session</p>
-          <p style="font-size: 12px; margin-top: 10px;">Share the link above to add users</p>
-        </div>
-      `;
-      count.textContent = 'No users registered';
-    } else {
-      count.textContent = `${users.length} users registered`;
-
-      let html = `
-        <table class="users-table">
-          <thead>
-            <tr>
-              <th>Phone Number</th>
-              <th>Safety Code</th>
-              <th>Registered</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-
-      users.forEach(user => {
-        const date = user.timestamp ? user.timestamp.toDate().toLocaleString() : 'Just now';
-        const displayPhone = user.phoneDisplay || user.phone; // ✅ supports new field
-        html += `
-          <tr>
-            <td>${displayPhone}</td>
-            <td style="color: var(--primary-yellow); font-family: monospace;">${user.safetyCode}</td>
-            <td>${date}</td>
-            <td><span class="status-badge status-${user.status === 'newly entered' ? 'new' : 'sent'}">${user.status}</span></td>
-          </tr>
-        `;
-      });
-
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    }
-
-    // Campaign recipients list
-    const list = document.getElementById('recipientsList');
-    const recipientCount = document.getElementById('recipientCount');
-    const sendBtn = document.getElementById('sendBtn');
-
-    if (users.length === 0) {
-      list.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📭</div>
-          <p>No recipients captured in this session</p>
-          <p style="font-size: 12px; margin-top: 10px;">Switch to Users tab to get the registration link</p>
-        </div>
-      `;
-      recipientCount.textContent = 'No recipients available';
-      if (sendBtn) sendBtn.disabled = true;
-    } else {
-      recipientCount.textContent = `${users.length} recipients available`;
-      if (sendBtn) sendBtn.disabled = false;
-
-      list.innerHTML = users.map(user => `
-        <div class="recipient-item">
-          <div class="recipient-info">
-            <div class="recipient-phone">${user.phoneDisplay || user.phone}</div>
-            <div class="recipient-code">Safety Code: ${user.safetyCode}</div>
+    <div id="content-users" class="tab-content active">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">👥</div>
+          <div class="card-title">
+            <h2>Registered Users</h2>
+            <p id="usersCount">No users registered</p>
           </div>
-          <input type="checkbox" class="recipient-checkbox" checked data-userid="${user.id}">
         </div>
-      `).join('');
+
+        <div class="url-box">
+          <div class="url-text" id="shortUrl">Loading...</div>
+          <button class="btn-copy" onclick="copyUrl()">Copy Link</button>
+        </div>
+
+        <div id="usersTableContainer">
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>No users registered in this session</p>
+            <p style="font-size: 12px; margin-top: 10px;">Share the link above to add users</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="content-campaign" class="tab-content">
+      <div class="content-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon">📱</div>
+            <div class="card-title">
+              <h2>Select Recipients</h2>
+              <p id="recipientCount">No recipients available</p>
+            </div>
+          </div>
+
+          <div class="recipients-list" id="recipientsList">
+            <div class="empty-state">
+              <div class="empty-icon">📭</div>
+              <p>No recipients captured in this session</p>
+              <p style="font-size: 12px; margin-top: 10px;">Switch to Users tab to get the registration link</p>
+            </div>
+          </div>
+
+          <div class="card-header" style="margin-top: 20px;">
+            <div class="card-icon">✉️</div>
+            <div class="card-title">
+              <h2>Compose Message</h2>
+              <p>SMS will be sent with Safety Code prefix</p>
+            </div>
+          </div>
+
+          <div class="safety-notice">
+            <span class="icon">🛡️</span>
+            <span><strong>Safety Code Protection:</strong> Safety code will be automatically prefixed to all messages for verification.</span>
+          </div>
+
+          <form id="sendForm" onsubmit="handleSend(event)">
+            <div class="form-group">
+              <label class="form-label">Message Content *</label>
+              <textarea class="form-textarea" id="messageContent" placeholder="Enter your secure message here..." maxlength="1600" required></textarea>
+              <div class="char-counter">
+                <span id="charCount">0</span> / 1600 characters
+              </div>
+            </div>
+
+            <div class="spam-notice" style="background: rgba(244, 185, 66, 0.05); border: 1px solid var(--border-dark); border-radius: 12px; padding: 16px; margin-top: 20px; display: flex; align-items: flex-start; gap: 12px; font-size: 13px; animation: fadeIn 0.5s ease;">
+              <span style="font-size: 20px; flex-shrink: 0;">📧</span>
+              <div>
+                <strong style="color: var(--primary-yellow); display: block; margin-bottom: 4px;">Didn't receive the message?</strong>
+                <span style="opacity: 0.8;">If you did not receive the text message, please check your spam folder.</span>
+              </div>
+            </div>
+
+            <div class="safety-notice" style="margin-bottom: 20px; margin-top: 20px;">
+              <span class="icon">👁️</span>
+              <div>
+                <strong>Preview:</strong><br />
+                <span id="previewText" style="font-family: monospace; font-size: 13px;">
+                  <span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> Your message will appear here...
+                </span>
+              </div>
+            </div>
+
+            <button type="submit" class="btn" id="sendBtn" disabled>
+              <span>🚀</span>
+              Send Secure Message
+            </button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon">📨</div>
+            <div class="card-title">
+              <h2>Message History</h2>
+              <p id="messageCount">No messages sent</p>
+            </div>
+          </div>
+
+          <div class="message-history" id="messageHistory">
+            <div class="empty-state">
+              <div class="empty-icon">📤</div>
+              <p>No messages sent yet</p>
+              <p style="font-size: 12px; margin-top: 10px;">Sent messages will appear here</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="expiredModal">
+    <div class="modal">
+      <div class="modal-icon">⏰</div>
+      <h2>Session Expired</h2>
+      <p>Your session has expired for security reasons. All data has been purged per Mobile Objex security protocols.</p>
+      <button class="btn" onclick="logout()">Return to Login</button>
+    </div>
+  </div>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
+      authDomain: "mobile-objex.firebaseapp.com",
+      projectId: "mobile-objex",
+      storageBucket: "mobile-objex.firebasestorage.app",
+      messagingSenderId: "875499185931",
+      appId: "1:875499185931:web:6f90c12f6a69649065640e"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // --- SMS endpoints (callable first, then HTTP fallback) ---
+    const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
+    const functions = firebase.app().functions("us-central1");
+    const sendSMSCallable = functions.httpsCallable("sendSMS");
+
+    // -------------------------
+    // Globals
+    // -------------------------
+    let currentSession = null;
+    let sessionId = null;
+    let usersListener = null;
+    let messages = [];
+    let timerInterval = null;
+    let expiryTime = null;
+
+    // -------------------------
+    // Helpers
+    // -------------------------
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
-  }
 
-  // Message preview
-  function setupMessagePreview() {
-    const textarea = document.getElementById('messageContent');
-    const preview = document.getElementById('previewText');
+    // Strict US/E164 normalizer (returns "+1..." or "+..." or null)
+    function normalizeUSPhoneToE164(raw) {
+      const s = String(raw || "").trim();
+      if (!s) return null;
 
-    if (textarea && preview) {
-      textarea.addEventListener('input', function () {
-        const text = this.value;
-        document.getElementById('charCount').textContent = text.length;
+      const digits = s.replace(/\D/g, "");
+      if (s.startsWith("+") && digits.length >= 10) return "+" + digits;
 
-        if (text.trim()) {
-          preview.innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> ${escapeHtml(text)}`;
-        } else {
-          preview.innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> Your message will appear here...`;
-        }
+      // US default behavior:
+      if (digits.length === 10) return "+1" + digits;
+      if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+
+      return null;
+    }
+
+    function isSendOk(data) {
+      if (!data) return false;
+      return data.ok === true || data.success === true;
+    }
+
+    async function postSendSMS(toE164, message) {
+      const res = await fetch(SENDSMS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // send both styles to match either backend implementation
+        body: JSON.stringify({
+          to: toE164,
+          text: message,
+          phone: toE164,
+          message: message
+        })
       });
-    }
-  }
 
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
+      const raw = await res.text();
+      let data = {};
+      try { data = JSON.parse(raw); } catch { data = { raw }; }
 
-  // ✅ SEND MESSAGE (fixed to use HTTP function)
-  async function handleSend(e) {
-    e.preventDefault();
-
-    const content = document.getElementById('messageContent').value.trim();
-    if (!content) {
-      alert('Please enter a message');
-      return false;
+      if (!res.ok) {
+        const msg = data.error || data.message || `HTTP ${res.status}`;
+        const err = new Error(msg);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
     }
 
-    const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
-    if (checkboxes.length === 0) {
-      alert('Please select at least one recipient');
-      return false;
-    }
-
-    const sendBtn = document.getElementById('sendBtn');
-    sendBtn.innerHTML = '<span>⏳</span> Sending...';
-    sendBtn.disabled = true;
-
-    const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid);
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const userId of selectedUserIds) {
+    async function sendSmsWithFallback(toE164, fullMessage) {
+      // 1) Callable
       try {
-        const userDoc = await db.collection('users').doc(userId).get();
-        if (!userDoc.exists) continue;
+        const result = await sendSMSCallable({
+          phone: toE164,
+          message: fullMessage,
+          to: toE164,
+          text: fullMessage
+        });
+        return { transport: "callable", data: result.data || null };
+      } catch (err) {
+        console.warn("Callable sendSMS failed -> trying HTTP:", err);
+      }
 
-        const user = userDoc.data();
-const toE164 = user.phoneE164 || normalizeUSPhoneToE164(user.phone);
-if (!toE164 || toE164.length < 11) {
-  console.warn("Skipping invalid phone:", user.phone);
-  failCount++;
-  continue;
-}
+      // 2) HTTP fallback
+      const data = await postSendSMS(toE164, fullMessage);
+      return { transport: "http", data };
+    }
 
-const fullMessage = `${user.safetyCode} ${content}`;
+    // -------------------------
+    // Initialize
+    // -------------------------
+    async function init() {
+      await checkAuth();
+      loadTheme();
+      startTimer();
+      setupCharCounter();
+      setupMessagePreview();
+    }
 
-try {
-  // ✅ THIS is where your snippet goes
-  const result = await sendSMS({
-    phone: toE164,
-    message: fullMessage
-  });
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.getElementById('tab-' + tabName).classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.getElementById('content-' + tabName).classList.add('active');
+    }
 
-  console.log("SEND RESULT:", JSON.stringify(result.data, null, 2));
+    async function checkAuth() {
+      const sessionStr = localStorage.getItem('mo_current_session');
+      if (!sessionStr) {
+        window.location.href = 'login.html';
+        return;
+      }
 
-  const ok = result.data && (result.data.success === true || result.data.ok === true);
+      try {
+        currentSession = JSON.parse(sessionStr);
+        sessionId = currentSession.sessionId;
 
-  if (ok) {
-    await db.collection('messages').add({
-      sessionId: sessionId,
-      mo_username: currentSession.mo_username || currentSession.username,
-      recipient: user.phoneDisplay || user.phone,
-      recipientE164: toE164,
-      safetyCode: user.safetyCode,
-      content: content,
-      fullMessage: fullMessage,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      status: 'sent',
-      messageId: result.data.messageId || result.data.id || null
-    });
+        const doc = await db.collection('sessions').doc(sessionId).get();
+        if (!doc.exists || !doc.data().active) {
+          showExpiredModal();
+          return;
+        }
 
-    await db.collection('users').doc(userId).update({
-      status: 'sent',
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      phoneE164: toE164 // ✅ saves normalized number for future sends
-    });
+        if (new Date(currentSession.expiresAt) < new Date()) {
+          showExpiredModal();
+          return;
+        }
 
-    successCount++;
-  } else {
-    throw new Error(result.data?.error || result.data?.message || "SMS failed");
-  }
+        document.getElementById('usernameDisplay').textContent = currentSession.name || currentSession.username || "";
+        document.getElementById('shortUrl').textContent = currentSession.captureUrl || "";
 
-} catch (smsError) {
-  console.error('SMS Failed:', smsError);
+        setupUsersListener();
+        loadMessageHistory();
+      } catch (e) {
+        console.error('Session error:', e);
+        logout();
+      }
+    }
 
-  await db.collection('messages').add({
-    sessionId: sessionId,
-    mo_username: currentSession.mo_username || currentSession.username,
-    recipient: user.phoneDisplay || user.phone,
-    recipientE164: toE164,
-    safetyCode: user.safetyCode,
-    content: content,
-    fullMessage: fullMessage,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-    status: 'failed',
-    error: smsError.message || String(smsError)
-  });
+    function setupUsersListener() {
+      usersListener = db.collection('users')
+        .where('sessionId', '==', sessionId)
+        .onSnapshot(snapshot => {
+          const users = [];
+          snapshot.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
 
-  failCount++;
-}
-
-
-          // Optional: log failure too
-          await db.collection('messages').add({
-            sessionId: sessionId,
-            mo_username: currentSession.mo_username || currentSession.username,
-            recipient: user.phoneDisplay || user.phone,
-            recipientE164: to,
-            safetyCode: user.safetyCode,
-            content: content,
-            fullMessage: fullMessage,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            status: 'failed',
-            error: smsError.message || String(smsError)
+          users.sort((a, b) => {
+            const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
+            const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
+            return timeB - timeA;
           });
 
+          updateUsersUI(users);
+        }, error => console.error("Error listening to users:", error));
+    }
+
+    function updateUsersUI(users) {
+      const container = document.getElementById('usersTableContainer');
+      const count = document.getElementById('usersCount');
+
+      if (users.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>No users registered in this session</p>
+            <p style="font-size: 12px; margin-top: 10px;">Share the link above to add users</p>
+          </div>
+        `;
+        count.textContent = 'No users registered';
+      } else {
+        count.textContent = `${users.length} users registered`;
+
+        let html = `
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>Phone Number</th>
+                <th>Safety Code</th>
+                <th>Registered</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        users.forEach(user => {
+          const date = user.timestamp ? user.timestamp.toDate().toLocaleString() : 'Just now';
+          const displayPhone = user.phoneDisplay || user.phone || '';
+          const status = user.status || 'newly entered';
+          html += `
+            <tr>
+              <td>${escapeHtml(displayPhone)}</td>
+              <td style="color: var(--primary-yellow); font-family: monospace;">${escapeHtml(String(user.safetyCode || ""))}</td>
+              <td>${escapeHtml(date)}</td>
+              <td><span class="status-badge status-${status === 'newly entered' ? 'new' : 'sent'}">${escapeHtml(status)}</span></td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      }
+
+      const list = document.getElementById('recipientsList');
+      const recipientCount = document.getElementById('recipientCount');
+      const sendBtn = document.getElementById('sendBtn');
+
+      if (users.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>No recipients captured in this session</p>
+            <p style="font-size: 12px; margin-top: 10px;">Switch to Users tab to get the registration link</p>
+          </div>
+        `;
+        recipientCount.textContent = 'No recipients available';
+        if (sendBtn) sendBtn.disabled = true;
+      } else {
+        recipientCount.textContent = `${users.length} recipients available`;
+        if (sendBtn) sendBtn.disabled = false;
+
+        list.innerHTML = users.map(user => `
+          <div class="recipient-item">
+            <div class="recipient-info">
+              <div class="recipient-phone">${escapeHtml(user.phoneDisplay || user.phone || "")}</div>
+              <div class="recipient-code">Safety Code: ${escapeHtml(String(user.safetyCode || ""))}</div>
+            </div>
+            <input type="checkbox" class="recipient-checkbox" checked data-userid="${user.id}">
+          </div>
+        `).join('');
+      }
+    }
+
+    function setupMessagePreview() {
+      const textarea = document.getElementById('messageContent');
+      const preview = document.getElementById('previewText');
+
+      if (textarea && preview) {
+        textarea.addEventListener('input', function () {
+          const text = this.value || "";
+          document.getElementById('charCount').textContent = text.length;
+
+          if (text.trim()) {
+            preview.innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> ${escapeHtml(text)}`;
+          } else {
+            preview.innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> Your message will appear here...`;
+          }
+        });
+      }
+    }
+
+    function setupCharCounter() {
+      const textarea = document.getElementById('messageContent');
+      if (textarea) {
+        textarea.addEventListener('input', function () {
+          document.getElementById('charCount').textContent = (this.value || "").length;
+        });
+      }
+    }
+
+    // -------------------------
+    // SEND MESSAGE
+    // -------------------------
+    async function handleSend(e) {
+      e.preventDefault();
+
+      const content = (document.getElementById('messageContent').value || "").trim();
+      if (!content) {
+        alert('Please enter a message');
+        return false;
+      }
+
+      const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
+      if (checkboxes.length === 0) {
+        alert('Please select at least one recipient');
+        return false;
+      }
+
+      const sendBtn = document.getElementById('sendBtn');
+      sendBtn.innerHTML = '<span>⏳</span> Sending...';
+      sendBtn.disabled = true;
+
+      const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid);
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const userId of selectedUserIds) {
+        try {
+          const userDoc = await db.collection('users').doc(userId).get();
+          if (!userDoc.exists) {
+            failCount++;
+            continue;
+          }
+
+          const user = userDoc.data();
+          const toE164 = user.phoneE164 || normalizeUSPhoneToE164(user.phone);
+
+          if (!toE164) {
+            console.warn("Skipping invalid phone:", user.phone);
+            failCount++;
+            continue;
+          }
+
+          const fullMessage = `${user.safetyCode} ${content}`;
+
+          try {
+            const { transport, data } = await sendSmsWithFallback(toE164, fullMessage);
+            console.log(`SEND RESULT (${transport}):`, JSON.stringify(data, null, 2));
+
+            if (isSendOk(data)) {
+              await db.collection('messages').add({
+                sessionId: sessionId,
+                mo_username: currentSession.mo_username || currentSession.username,
+                recipient: user.phoneDisplay || user.phone,
+                recipientE164: toE164,
+                safetyCode: user.safetyCode,
+                content: content,
+                fullMessage: fullMessage,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'sent',
+                messageId: (data && (data.messageId || data.id)) ? (data.messageId || data.id) : null
+              });
+
+              await db.collection('users').doc(userId).update({
+                status: 'sent',
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                phoneE164: toE164
+              });
+
+              successCount++;
+            } else {
+              const msg = (data && (data.error || data.message)) ? (data.error || data.message) : "SMS failed";
+              throw new Error(msg);
+            }
+          } catch (smsError) {
+            console.error('SMS Failed:', smsError);
+
+            await db.collection('messages').add({
+              sessionId: sessionId,
+              mo_username: currentSession.mo_username || currentSession.username,
+              recipient: user.phoneDisplay || user.phone,
+              recipientE164: toE164,
+              safetyCode: user.safetyCode,
+              content: content,
+              fullMessage: fullMessage,
+              timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+              status: 'failed',
+              error: smsError.message || String(smsError)
+            });
+
+            failCount++;
+          }
+
+          // simple rate limit
+          await new Promise(r => setTimeout(r, 1000));
+        } catch (error) {
+          console.error('Error processing user:', error);
           failCount++;
         }
+      }
 
-        // Rate limiting
-        await new Promise(r => setTimeout(r, 1000));
+      await loadMessageHistory();
 
-      } catch (error) {
-        console.error('Error processing user:', error);
-        failCount++;
+      sendBtn.innerHTML = '<span>🚀</span> Send Secure Message';
+      sendBtn.disabled = false;
+
+      if (successCount > 0) {
+        alert(`✅ Sent to ${successCount} people! ${failCount > 0 ? `(${failCount} failed)` : ''}`);
+      } else {
+        alert('❌ Failed to send messages. Check console for details.');
+      }
+
+      return false;
+    }
+
+    // -------------------------
+    // Message History
+    // -------------------------
+    function updateMessageHistory() {
+      const history = document.getElementById('messageHistory');
+      const count = document.getElementById('messageCount');
+
+      if (messages.length === 0) {
+        history.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📤</div>
+            <p>No messages sent yet</p>
+            <p style="font-size: 12px; margin-top: 10px;">Sent messages will appear here</p>
+          </div>
+        `;
+        count.textContent = 'No messages sent';
+      } else {
+        count.textContent = `${messages.length} messages sent`;
+
+        history.innerHTML = messages.map(msg => `
+          <div class="message-item">
+            <div class="message-header">
+              <span><strong>${escapeHtml(msg.recipient)}</strong></span>
+              <span class="message-status ${msg.status}">
+                <span>${msg.status === 'sent' ? '✓' : '✕'}</span>
+                <span>${escapeHtml(String(msg.status || '').toUpperCase())}</span>
+              </span>
+            </div>
+            <div class="message-content">
+              <span class="safety-prefix">${escapeHtml(msg.code)}</span> ${escapeHtml(msg.content)}
+            </div>
+            <div style="margin-top: 10px; font-size: 12px; opacity: 0.5;">
+              ${escapeHtml(msg.timestamp)}
+            </div>
+          </div>
+        `).join('');
       }
     }
 
-    await loadMessageHistory();
-
-    sendBtn.innerHTML = '<span>🚀</span> Send Secure Message';
-    sendBtn.disabled = false;
-
-    if (successCount > 0) {
-      alert(`✅ Sent to ${successCount} people! ${failCount > 0 ? `(${failCount} failed)` : ''}`);
-    } else {
-      alert('❌ Failed to send messages. Check console for details.');
-    }
-
-    return false;
-  }
-
-  // Message history display
-  function updateMessageHistory() {
-    const history = document.getElementById('messageHistory');
-    const count = document.getElementById('messageCount');
-
-    if (messages.length === 0) {
-      history.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📤</div>
-          <p>No messages sent yet</p>
-          <p style="font-size: 12px; margin-top: 10px;">Sent messages will appear here</p>
-        </div>
-      `;
-      count.textContent = 'No messages sent';
-    } else {
-      count.textContent = `${messages.length} messages sent`;
-
-      history.innerHTML = messages.map(msg => `
-        <div class="message-item">
-          <div class="message-header">
-            <span><strong>${msg.recipient}</strong></span>
-            <span class="message-status ${msg.status}">
-              <span>${msg.status === 'sent' ? '✓' : '✕'}</span>
-              <span>${msg.status.toUpperCase()}</span>
-            </span>
-          </div>
-          <div class="message-content">
-            <span class="safety-prefix">${msg.code}</span> ${escapeHtml(msg.content)}
-          </div>
-          <div style="margin-top: 10px; font-size: 12px; opacity: 0.5;">
-            ${msg.timestamp}
-          </div>
-        </div>
-      `).reverse().join('');
-    }
-  }
-
-  // ✅ Load message history WITHOUT composite index requirement
-  async function loadMessageHistory() {
-    try {
-      const snapshot = await db.collection('messages')
-        .where('sessionId', '==', sessionId)
-        .get();
-
-      messages = [];
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        messages.push({
-          id: doc.id,
-          recipient: data.recipient,
-          code: data.safetyCode,
-          content: data.content,
-          timestamp: data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : 'Just now',
-          status: data.status || 'sent',
-          _ts: data.timestamp ? data.timestamp.toMillis() : 0
-        });
-      });
-
-      // sort newest first
-      messages.sort((a, b) => b._ts - a._ts);
-
-      updateMessageHistory();
-    } catch (error) {
-      console.error("Error loading messages:", error);
-    }
-  }
-
-  // Copy URL
-  function copyUrl() {
-    if (!sessionId) {
-      alert('Session not loaded yet. Please wait...');
-      return;
-    }
-
-    const urlText = 'https://mobile-objex.it.com/capture.html?s=' + sessionId;
-
-    const urlDisplay = document.getElementById('shortUrl');
-    if (urlDisplay) urlDisplay.textContent = urlText;
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(urlText).then(() => {
-        showCopySuccess();
-      }).catch(() => {
-        fallbackCopy(urlText);
-      });
-    } else {
-      fallbackCopy(urlText);
-    }
-  }
-
-  function fallbackCopy(text) {
-    const tempInput = document.createElement('input');
-    tempInput.value = text;
-    tempInput.style.position = 'fixed';
-    tempInput.style.opacity = '0';
-    document.body.appendChild(tempInput);
-    tempInput.select();
-    tempInput.setSelectionRange(0, 99999);
-
-    try {
-      const successful = document.execCommand('copy');
-      if (successful) showCopySuccess();
-      else alert('Copy failed. URL: ' + text);
-    } catch (err) {
-      console.error('Copy error:', err);
-      alert('Please copy manually: ' + text);
-    }
-
-    document.body.removeChild(tempInput);
-  }
-
-  function showCopySuccess() {
-    const btn = document.querySelector('.btn-copy');
-    if (btn) {
-      btn.textContent = '✓ Copied!';
-      btn.style.background = '#34c759';
-
-      setTimeout(() => {
-        btn.textContent = 'Copy Link';
-        btn.style.background = '';
-      }, 2000);
-    }
-  }
-
-  // Logout
-  async function logout() {
-    if (confirm('Logout will clear all session data. Continue?')) {
+    async function loadMessageHistory() {
       try {
-        if (sessionId) {
-          await db.collection('sessions').doc(sessionId).update({
-            active: false,
-            loggedOutAt: firebase.firestore.FieldValue.serverTimestamp()
+        const snapshot = await db.collection('messages')
+          .where('sessionId', '==', sessionId)
+          .get();
+
+        messages = [];
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          messages.push({
+            id: doc.id,
+            recipient: data.recipient || '',
+            code: data.safetyCode || '',
+            content: data.content || '',
+            timestamp: data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : 'Just now',
+            status: data.status || 'sent',
+            _ts: data.timestamp ? data.timestamp.toMillis() : 0
           });
-        }
+        });
+
+        // newest first
+        messages.sort((a, b) => b._ts - a._ts);
+        updateMessageHistory();
       } catch (error) {
-        console.error("Error during logout:", error);
+        console.error("Error loading messages:", error);
+      }
+    }
+
+    // -------------------------
+    // Copy URL
+    // -------------------------
+    function copyUrl() {
+      if (!sessionId) {
+        alert('Session not loaded yet. Please wait...');
+        return;
       }
 
-      if (usersListener) usersListener();
+      const urlText = 'https://mobile-objex.it.com/capture.html?s=' + sessionId;
+      const urlDisplay = document.getElementById('shortUrl');
+      if (urlDisplay) urlDisplay.textContent = urlText;
 
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(urlText).then(showCopySuccess).catch(() => fallbackCopy(urlText));
+      } else {
+        fallbackCopy(urlText);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const tempInput = document.createElement('input');
+      tempInput.value = text;
+      tempInput.style.position = 'fixed';
+      tempInput.style.opacity = '0';
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      tempInput.setSelectionRange(0, 99999);
+
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) showCopySuccess();
+        else alert('Copy failed. URL: ' + text);
+      } catch (err) {
+        console.error('Copy error:', err);
+        alert('Please copy manually: ' + text);
+      }
+      document.body.removeChild(tempInput);
+    }
+
+    function showCopySuccess() {
+      const btn = document.querySelector('.btn-copy');
+      if (btn) {
+        btn.textContent = '✓ Copied!';
+        btn.style.background = '#34c759';
+        setTimeout(() => {
+          btn.textContent = 'Copy Link';
+          btn.style.background = '';
+        }, 2000);
+      }
+    }
+
+    // -------------------------
+    // Logout
+    // -------------------------
+    async function logout() {
+      if (confirm('Logout will clear all session data. Continue?')) {
+        try {
+          if (sessionId) {
+            await db.collection('sessions').doc(sessionId).update({
+              active: false,
+              loggedOutAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+        } catch (error) {
+          console.error("Error during logout:", error);
+        }
+
+        if (usersListener) usersListener();
+        localStorage.removeItem('mo_current_session');
+        window.location.href = 'login.html';
+      }
+    }
+
+    // -------------------------
+    // Theme
+    // -------------------------
+    function toggleTheme() {
+      const body = document.body;
+      const icon = document.getElementById('themeIcon');
+      const text = document.getElementById('themeText');
+
+      body.classList.toggle('light-mode');
+
+      if (body.classList.contains('light-mode')) {
+        icon.textContent = '☀️';
+        text.textContent = 'Light';
+        localStorage.setItem('theme', 'light');
+      } else {
+        icon.textContent = '🌙';
+        text.textContent = 'Dark';
+        localStorage.setItem('theme', 'dark');
+      }
+    }
+
+    function loadTheme() {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+        document.getElementById('themeIcon').textContent = '☀️';
+        document.getElementById('themeText').textContent = 'Light';
+      }
+    }
+
+    // -------------------------
+    // Session timer
+    // -------------------------
+    function startTimer() {
+      if (currentSession && currentSession.expiresAt) {
+        expiryTime = new Date(currentSession.expiresAt).getTime();
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 1000);
+      }
+    }
+
+    function updateTimer() {
+      if (!expiryTime) return;
+
+      const now = new Date().getTime();
+      const distance = expiryTime - now;
+
+      if (distance < 0) {
+        clearInterval(timerInterval);
+        document.getElementById('timerDisplay').textContent = "00:00";
+        document.getElementById('timerDisplay').classList.add('timer-low');
+        showExpiredModal();
+        return;
+      }
+
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      const display = String(minutes).padStart(2, '0') + ":" + String(seconds).padStart(2, '0');
+      document.getElementById('timerDisplay').textContent = display;
+
+      if (minutes < 2) document.getElementById('timerDisplay').classList.add('timer-low');
+    }
+
+    function showExpiredModal() {
+      document.getElementById('expiredModal').classList.add('show');
       localStorage.removeItem('mo_current_session');
-      window.location.href = 'login.html';
-    }
-  }
 
-  // Theme toggle
-  function toggleTheme() {
-    const body = document.body;
-    const icon = document.getElementById('themeIcon');
-    const text = document.getElementById('themeText');
-
-    body.classList.toggle('light-mode');
-
-    if (body.classList.contains('light-mode')) {
-      icon.textContent = '☀️';
-      text.textContent = 'Light';
-      localStorage.setItem('theme', 'light');
-    } else {
-      icon.textContent = '🌙';
-      text.textContent = 'Dark';
-      localStorage.setItem('theme', 'dark');
-    }
-  }
-
-  function loadTheme() {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      document.body.classList.add('light-mode');
-      document.getElementById('themeIcon').textContent = '☀️';
-      document.getElementById('themeText').textContent = 'Light';
-    }
-  }
-
-  // Session timer (30 minutes)
-  function startTimer() {
-    if (currentSession && currentSession.expiresAt) {
-      expiryTime = new Date(currentSession.expiresAt).getTime();
-      updateTimer();
-      timerInterval = setInterval(updateTimer, 1000);
-    }
-  }
-
-  function updateTimer() {
-    if (!expiryTime) return;
-
-    const now = new Date().getTime();
-    const distance = expiryTime - now;
-
-    if (distance < 0) {
-      clearInterval(timerInterval);
-      document.getElementById('timerDisplay').textContent = "00:00";
-      document.getElementById('timerDisplay').classList.add('timer-low');
-      showExpiredModal();
-      return;
+      if (sessionId) {
+        db.collection('sessions').doc(sessionId).update({
+          active: false,
+          expired: true
+        }).catch(() => {});
+      }
     }
 
-    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-    const display = String(minutes).padStart(2, '0') + ":" + String(seconds).padStart(2, '0');
-    document.getElementById('timerDisplay').textContent = display;
-
-    if (minutes < 2) document.getElementById('timerDisplay').classList.add('timer-low');
-  }
-
-  function showExpiredModal() {
-    document.getElementById('expiredModal').classList.add('show');
-    localStorage.removeItem('mo_current_session');
-
-    if (sessionId) {
-      db.collection('sessions').doc(sessionId).update({
-        active: false,
-        expired: true
-      });
-    }
-  }
-
-  function setupCharCounter() {
-    const textarea = document.getElementById('messageContent');
-    if (textarea) {
-      textarea.addEventListener('input', function () {
-        document.getElementById('charCount').textContent = this.value.length;
-      });
-    }
-  }
-
-  // Start
-  init();
-</script>
-
+    // Start
+    init();
+  </script>
 </body>
 </html>
+
