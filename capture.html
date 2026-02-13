@@ -544,7 +544,15 @@
     if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
     return "+" + digits;
   }
-
+    function normalizeUSPhoneToE164(raw) {
+  const digits = String(raw || "").replace(/\D/g, "");
+  // US numbers only (since your UI formats US style)
+  if (digits.length === 10) return "+1" + digits;
+  if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+  // If user pasted +E164 already
+  if (String(raw).trim().startsWith("+") && digits.length >= 10) return "+" + digits;
+  return null;
+}
   async function postSendSMS(toE164, text) {
     const res = await fetch(SENDSMS_URL, {
       method: "POST",
@@ -622,21 +630,39 @@
     return div.innerHTML;
   }
 
-  async function sendConfirmationSMS(phoneDisplay, safetyCode) {
-    const phoneE164 = normalizePhone(phoneDisplay);
-    const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
+ async function sendConfirmationSMS(phoneRaw, safetyCode) {
+  const phone = normalizeUSPhoneToE164(phoneRaw);
+  if (!phone) {
+    alert("Invalid phone. Please enter a valid US number.");
+    return false;
+  }
 
-    console.log('SENDING:', { phoneE164, message });
+  const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
 
-    try {
-      const result = await postSendSMS(phoneE164, message);
-      console.log('SMS RESULT:', result);
-      return true;
-    } catch (error) {
-      console.error('SMS ERROR:', error);
+  console.log("SENDING:", { phone, message });
+
+  try {
+    // Force the region explicitly (recommended)
+    const sendSMS = firebase.app().functions("us-central1").httpsCallable("sendSMS");
+
+    const result = await sendSMS({ phone, message });
+
+    // PRINT the real payload clearly
+    console.log("SMS RESULT DATA:", JSON.stringify(result.data, null, 2));
+
+    if (!result.data || result.data.success !== true) {
+      alert("SMS failed: " + (result.data?.error || "Unknown error"));
       return false;
     }
+
+    return true;
+  } catch (error) {
+    console.error("SMS ERROR:", error);
+    alert("SMS failed: " + (error.message || "Unknown error"));
+    return false;
   }
+}
+
 
   function setupForm() {
     document.getElementById('captureForm').addEventListener('submit', async function (e) {
@@ -701,8 +727,8 @@
         document.getElementById('successState').classList.add('show');
 
         // ✅ send confirmation SMS through your HTTP function
-        await sendConfirmationSMS(phone, safetyCode);
-
+      await sendConfirmationSMS(phone, safetyCode);
+          
       } catch (error) {
         console.error("Error saving to database:", error);
         alert('Error saving data. Please try again.');
