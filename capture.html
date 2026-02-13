@@ -525,6 +525,8 @@
         // FIREBASE CONFIGURATION - PASTE YOUR CONFIG HERE (SAME AS LOGIN)
         // ==========================================
    // Your web app's Firebase configuration
+<script>
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
   authDomain: "mobile-objex.firebaseapp.com",
@@ -533,180 +535,199 @@ const firebaseConfig = {
   messagingSenderId: "875499185931",
   appId: "1:875499185931:web:6f90c12f6a69649065640e"
 };
-        
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
 
-        // Parse session from URL parameter (?s=XXXX)
-        const urlParams = new URLSearchParams(window.location.search);
-        const sessionId = urlParams.get('s');
-        let sessionValid = false;
-        let sessionData = null;
+// Initialize Firebase with error handling
+try {
+    firebase.initializeApp(firebaseConfig);
+    console.log("✅ Firebase initialized successfully");
+} catch (e) {
+    console.error("❌ Firebase init failed:", e);
+    alert("Firebase connection failed. Check console.");
+}
 
-        async function validateSession() {
-            if (!sessionId || !sessionId.startsWith('sess_')) {
-                showInvalidSession();
-                return false;
-            }
+const db = firebase.firestore();
 
-            try {
-                // Check Firebase for session validity - this replaces localStorage check
-                const doc = await db.collection('sessions').doc(sessionId).get();
-                
-                if (!doc.exists) {
-                    showInvalidSession();
-                    return false;
-                }
-                
-                sessionData = doc.data();
-                const now = firebase.firestore.Timestamp.now();
-                
-                // Check if session is active and not expired
-                if (!sessionData.active || sessionData.expiresAt.toMillis() < now.toMillis()) {
-                    showInvalidSession();
-                    return false;
-                }
-                
-                sessionValid = true;
-                return true;
-            } catch (error) {
-                console.error("Error validating session:", error);
-                showInvalidSession();
-                return false;
-            }
-        }
+// Parse session from URL
+const urlParams = new URLSearchParams(window.location.search);
+const sessionId = urlParams.get('s');
 
-        function showInvalidSession() {
-            document.getElementById('registrationForm').style.display = 'none';
-            document.getElementById('invalidSession').classList.add('show');
-        }
+// Debug: Log session ID
+console.log("Session ID from URL:", sessionId);
 
-        // Phone formatting
-        function setupPhoneFormatting() {
-            const phoneInputs = [document.getElementById('phone'), document.getElementById('phoneConfirm')];
-            
-            phoneInputs.forEach(input => {
-                input.addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/\D/g, '');
-                    if (value.length > 0) {
-                        if (value.length <= 3) {
-                            value = '(' + value;
-                        } else if (value.length <= 6) {
-                            value = '(' + value.slice(0, 3) + ') ' + value.slice(3);
-                        } else {
-                            value = '(' + value.slice(0, 3) + ') ' + value.slice(3, 6) + '-' + value.slice(6, 10);
-                        }
-                    }
-                    e.target.value = value;
-                });
-            });
-        }
+if (!sessionId) {
+    console.error("No session ID in URL!");
+    document.getElementById('registrationForm').style.display = 'none';
+    document.getElementById('invalidSession').classList.add('show');
+}
 
-        // Form submission
-        function setupForm() {
-            document.getElementById('captureForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const phone = document.getElementById('phone').value.trim();
-                const phoneConfirm = document.getElementById('phoneConfirm').value.trim();
-                const safetyCode = document.getElementById('safetyCode').value.trim();
-                const safetyCodeConfirm = document.getElementById('safetyCodeConfirm').value.trim();
-                
-                // Reset errors
-                document.querySelectorAll('.form-input').forEach(el => el.classList.remove('error'));
-                document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
-                
-                let hasError = false;
-                
-                if (phone !== phoneConfirm) {
-                    document.getElementById('phone').classList.add('error');
-                    document.getElementById('phoneConfirm').classList.add('error');
-                    document.getElementById('phoneError').classList.add('show');
-                    hasError = true;
-                }
-                
-                if (safetyCode !== safetyCodeConfirm) {
-                    document.getElementById('safetyCode').classList.add('error');
-                    document.getElementById('safetyCodeConfirm').classList.add('error');
-                    document.getElementById('codeError').classList.add('show');
-                    hasError = true;
-                }
-                
-                // Safety Code Length Validation (4-6 characters)
-                if (safetyCode.length < 4 || safetyCode.length > 6) {
-                    alert('Safety code must be between 4 and 6 characters.');
-                    document.getElementById('safetyCode').classList.add('error');
-                    document.getElementById('safetyCode').focus();
-                    hasError = true;
-                }
-                
-                if (hasError) return;
-                
-                try {
-                    // Store data in Firebase - BACKEND DATABASE
-                    const userData = {
-                        sessionId: sessionId,
-                        phone: phone,
-                        safetyCode: safetyCode,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                        status: 'newly entered',
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    };
-                    
-                    await db.collection('users').add(userData);
-                    
-                    // Update SMS preview with actual safety code
-                    document.getElementById('smsPreviewContent').innerHTML = 
-                        `<span style="color: var(--primary-yellow); font-weight: 700;">${escapeHtml(safetyCode)}</span> Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
-                    
-                    // Show success
-                    document.getElementById('registrationForm').style.display = 'none';
-                    document.getElementById('successState').classList.add('show');
-                    
-                    // Send confirmation SMS (per PDF requirement)
-                    await sendConfirmationSMS(phone, safetyCode);
-                    
-                } catch (error) {
-                    console.error("Error saving to database:", error);
-                    alert('Error saving data. Please try again.');
-                }
-            });
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // Send confirmation SMS - integrates with your existing SMS Composer App
-async function sendConfirmationSMS(phone, safetyCode) {
-    // STRIP ALL FORMATTING - keep only digits
-    const cleanPhone = phone.replace(/\D/g, '');
-    
-    const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
-    const TEXTBELT_KEY = 'b88f3bc5c28e511ec230fa8b46c2289634e0604dIpPA4CpHdZu853Iddph9p2gI1';
+async function validateSession() {
+    if (!sessionId) return false;
     
     try {
-        await fetch('https://textbelt.com/text', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `phone=${encodeURIComponent(cleanPhone)}&message=${encodeURIComponent(message)}&key=${TEXTBELT_KEY}`
-        });
-        console.log('Confirmation SMS sent to:', cleanPhone);
+        console.log("Validating session:", sessionId);
+        const doc = await db.collection('sessions').doc(sessionId).get();
+        
+        if (!doc.exists) {
+            console.error("Session not found in Firebase:", sessionId);
+            showInvalidSession();
+            return false;
+        }
+        
+        const data = doc.data();
+        console.log("Session data:", data);
+        
+        if (!data.active) {
+            console.error("Session inactive");
+            showInvalidSession();
+            return false;
+        }
+        
+        return true;
     } catch (error) {
-        console.error('SMS error:', error);
+        console.error("Firebase error validating session:", error);
+        alert("Database connection error. See console for details.");
+        return false;
     }
 }
 
+function showInvalidSession() {
+    document.getElementById('registrationForm').style.display = 'none';
+    document.getElementById('invalidSession').classList.add('show');
+}
 
-        // Initialize
-        validateSession().then(valid => {
-            if (valid) {
-                setupPhoneFormatting();
-                setupForm();
+// Phone formatting
+function setupPhoneFormatting() {
+    const inputs = [document.getElementById('phone'), document.getElementById('phoneConfirm')];
+    inputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '').substring(0, 10);
+            
+            if (value.length > 6) {
+                value = `(${value.slice(0,3)}) ${value.slice(3,6)}-${value.slice(6)}`;
+            } else if (value.length > 3) {
+                value = `(${value.slice(0,3)}) ${value.slice(3)}`;
+            } else if (value.length > 0) {
+                value = `(${value}`;
             }
+            
+            e.target.value = value;
         });
-    </script>
+    });
+}
+
+// Form submission with DEBUG logging
+function setupForm() {
+    document.getElementById('captureForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const phone = document.getElementById('phone').value.trim();
+        const phoneConfirm = document.getElementById('phoneConfirm').value.trim();
+        const safetyCode = document.getElementById('safetyCode').value.trim();
+        const safetyCodeConfirm = document.getElementById('safetyCodeConfirm').value.trim();
+        const submitBtn = document.getElementById('submitBtn');
+        
+        // Validation
+        if (phone !== phoneConfirm) {
+            alert('Phone numbers do not match!');
+            return;
+        }
+        
+        if (safetyCode !== safetyCodeConfirm) {
+            alert('Safety codes do not match!');
+            return;
+        }
+        
+        if (safetyCode.length < 4 || safetyCode.length > 6) {
+            alert('Safety code must be 4-6 characters!');
+            return;
+        }
+        
+        // Clean phone (digits only)
+        const cleanPhone = phone.replace(/\D/g, '');
+        if (cleanPhone.length !== 10) {
+            alert('Please enter a valid 10-digit US phone number!');
+            return;
+        }
+        
+        console.log("Submitting registration:", {
+            sessionId: sessionId,
+            phone: cleanPhone,
+            safetyCode: safetyCode
+        });
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+        
+        try {
+            // Save to Firebase
+            const userData = {
+                sessionId: sessionId,
+                phone: cleanPhone,  // CRITICAL: Store as digits only
+                displayPhone: phone, // Formatted version
+                safetyCode: safetyCode,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                status: 'newly entered',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            console.log("Saving to Firestore:", userData);
+            
+            const docRef = await db.collection('users').add(userData);
+            console.log("✅ SUCCESS! Document written with ID:", docRef.id);
+            
+            // Show success
+            document.getElementById('registrationForm').style.display = 'none';
+            document.getElementById('successState').classList.add('show');
+            
+            // Send SMS
+            await sendConfirmationSMS(cleanPhone, safetyCode);
+            
+        } catch (error) {
+            console.error("❌ FIREBASE WRITE FAILED:", error);
+            alert("Failed to save to database: " + error.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Complete Registration';
+        }
+    });
+}
+
+async function sendConfirmationSMS(phone, safetyCode) {
+    const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
+    const TEXTBELT_KEY = 'b88f3bc5c28e511ec230fa8b46c2289634e0604dIpPA4CpHdZu853Iddph9p2gI1';
+    
+    console.log("Sending SMS to:", phone);
+    
+    try {
+        const response = await fetch('https://textbelt.com/text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `phone=${encodeURIComponent(phone)}&message=${encodeURIComponent(message)}&key=${TEXTBELT_KEY}`
+        });
+        
+        const result = await response.json();
+        console.log("TextBelt response:", result);
+        
+        if (result.success) {
+            console.log("✅ SMS sent successfully");
+        } else {
+            console.error("❌ SMS failed:", result.error);
+            alert("Note: Registration saved but SMS failed to send. Error: " + result.error);
+        }
+    } catch (error) {
+        console.error("SMS network error:", error);
+    }
+}
+
+// Initialize
+if (sessionId) {
+    validateSession().then(valid => {
+        if (valid) {
+            setupPhoneFormatting();
+            setupForm();
+        }
+    });
+}
+</script>
+
 </body>
 </html>
