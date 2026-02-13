@@ -1,123 +1,475 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mobile Objex | Demo</title>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-  <style>
-    :root { --primary-yellow: #F4B942; --bg-dark: #0a0a0f; --card-dark: rgba(20, 20, 30, 0.85); --text-dark: #ffffff; --border-dark: rgba(244, 185, 66, 0.3); }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100vh; background: var(--bg-dark); color: var(--text-dark); display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .container { width: 100%; max-width: 480px; }
-    .logo-container { text-align: center; margin-bottom: 30px; }
-    .logo-icon { width: 60px; height: 60px; background: linear-gradient(135deg, #F4B942 0%, #FFD700 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; }
-    .shield { width: 30px; height: 36px; background: #0a0a0f; clip-path: polygon(50% 0%, 100% 25%, 100% 65%, 50% 100%, 0% 65%, 0% 25%); }
-    .card { background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 24px; padding: 40px; backdrop-filter: blur(20px); }
-    .card-header { text-align: center; margin-bottom: 30px; }
-    .form-group { margin-bottom: 20px; }
-    .form-label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; color: var(--primary-yellow); }
-    .form-input { width: 100%; padding: 16px 20px; border: 2px solid var(--border-dark); border-radius: 12px; background: rgba(10, 10, 15, 0.6); color: var(--text-dark); font-size: 16px; outline: none; }
-    .btn { width: 100%; padding: 18px; background: linear-gradient(135deg, #F4B942 0%, #E5AA33 100%); color: #0a0a0f; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 10px; }
-    .success-state { display: none; text-align: center; }
-    .success-state.show { display: block; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Objex | Secure Verification</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
+    <style>
+        :root {
+            --primary-yellow: #F4B942;
+            --primary-yellow-hover: #E5AA33;
+            --primary-glow: rgba(244, 185, 66, 0.6);
+            --bg-dark: #0a0a0f;
+            --bg-light: #f5f5f7;
+            --card-dark: rgba(20, 20, 30, 0.85);
+            --card-light: rgba(255, 255, 255, 0.95);
+            --text-dark: #ffffff;
+            --text-light: #1a1a1f;
+            --accent-glow: rgba(244, 185, 66, 0.4);
+            --border-dark: rgba(244, 185, 66, 0.3);
+            --border-light: rgba(0, 0, 0, 0.1);
+            --input-bg-dark: rgba(10, 10, 15, 0.6);
+            --input-bg-light: rgba(245, 245, 247, 0.8);
+            --success-green: #34c759;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
+            background: var(--bg-dark);
+            color: var(--text-dark);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        body.light-mode { background: var(--bg-light); color: var(--text-light); }
+
+        .bg-grid {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(244, 185, 66, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(244, 185, 66, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none; z-index: 0;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
+        }
+
+        body.light-mode .bg-grid {
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+        }
+
+        .orb {
+            position: fixed; border-radius: 50%;
+            filter: blur(80px); opacity: 0.3; z-index: 0;
+            animation: orb-pulse 8s ease-in-out infinite;
+        }
+
+        .orb-1 { width: 400px; height: 400px; background: radial-gradient(circle, var(--primary-yellow) 0%, transparent 70%); top: -100px; right: -100px; animation-delay: 0s; }
+        .orb-2 { width: 300px; height: 300px; background: radial-gradient(circle, var(--primary-yellow) 0%, transparent 70%); bottom: -50px; left: -50px; animation-delay: 4s; }
+
+        @keyframes orb-pulse { 0%, 100% { transform: scale(1); opacity: 0.3; } 50% { transform: scale(1.2); opacity: 0.5; } }
+
+        .theme-toggle {
+            position: fixed; top: 20px; right: 20px; z-index: 1000;
+            background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 50px;
+            padding: 8px 15px; cursor: pointer; display: flex; align-items: center; gap: 10px;
+            transition: all 0.3s ease; backdrop-filter: blur(10px); color: var(--text-dark);
+            font-family: inherit; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        body.light-mode .theme-toggle { background: var(--card-light); border-color: var(--border-light); color: var(--text-light); }
+        .theme-toggle:hover { transform: scale(1.05) translateY(-2px); box-shadow: 0 0 30px var(--accent-glow); border-color: var(--primary-yellow); }
+
+        .container { position: relative; z-index: 10; width: 100%; max-width: 480px; animation: slideUp 0.6s ease-out; }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .logo-container { text-align: center; margin-bottom: 30px; }
+
+        .logo-icon {
+            width: 60px; height: 60px; background: linear-gradient(135deg, #F4B942 0%, #FFD700 100%);
+            border-radius: 16px; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 15px; box-shadow: 0 4px 20px rgba(244, 185, 66, 0.4);
+            animation: logo-glow 3s infinite ease-in-out;
+        }
+
+        @keyframes logo-glow { 0%, 100% { box-shadow: 0 4px 20px rgba(244, 185, 66, 0.4); } 50% { box-shadow: 0 4px 30px rgba(244, 185, 66, 0.6), 0 0 40px rgba(244, 185, 66, 0.3); } }
+
+        .shield { width: 30px; height: 36px; background: #0a0a0f; clip-path: polygon(50% 0%, 100% 25%, 100% 65%, 50% 100%, 0% 65%, 0% 25%); }
+
+        .logo-text { font-size: 24px; font-weight: 800; color: var(--text-dark); }
+        .logo-text span { color: var(--primary-yellow); }
+        body.light-mode .logo-text { color: var(--text-light); }
+
+        .tagline { font-size: 13px; color: rgba(255, 255, 255, 0.6); letter-spacing: 2px; text-transform: uppercase; margin-top: 8px; }
+        body.light-mode .tagline { color: rgba(0, 0, 0, 0.5); }
+
+        .card {
+            background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 24px;
+            padding: 40px; backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(244, 185, 66, 0.1);
+            transition: all 0.4s ease; position: relative; overflow: hidden;
+        }
+
+        body.light-mode .card { background: var(--card-light); border-color: var(--border-light); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15); }
+
+        .card::before {
+            content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px;
+            background: linear-gradient(45deg, transparent, var(--primary-yellow), transparent);
+            z-index: -1; opacity: 0; transition: opacity 0.3s ease; border-radius: 26px;
+        }
+
+        .card:hover::before { opacity: 0.2; animation: border-glow 2s linear infinite; }
+        @keyframes border-glow { 0%, 100% { filter: blur(10px); } 50% { filter: blur(20px); } }
+
+        .card-header { text-align: center; margin-bottom: 30px; }
+        .card-header h1 { font-size: 28px; margin-bottom: 12px; font-weight: 800; line-height: 1.2; }
+        .card-header p { font-size: 15px; opacity: 0.7; line-height: 1.5; }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(244, 185, 66, 0.1); border: 1px solid var(--border-dark);
+            padding: 6px 12px; border-radius: 50px; font-size: 11px; color: var(--primary-yellow);
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; font-weight: 600;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; color: var(--primary-yellow); }
+
+        .form-input {
+            width: 100%; padding: 16px 20px; border: 2px solid var(--border-dark); border-radius: 12px;
+            background: var(--input-bg-dark); color: var(--text-dark); font-size: 16px; font-family: inherit;
+            transition: all 0.3s ease; outline: none;
+        }
+
+        body.light-mode .form-input { background: var(--input-bg-light); color: var(--text-light); border-color: var(--border-light); }
+        .form-input:focus { border-color: var(--primary-yellow); box-shadow: 0 0 0 4px var(--accent-glow); transform: translateY(-2px); }
+
+        .hint { font-size: 12px; opacity: 0.6; margin-top: 6px; display: block; }
+
+        .btn {
+            width: 100%; padding: 18px; background: linear-gradient(135deg, #F4B942 0%, #E5AA33 100%);
+            color: #0a0a0f; border: none; border-radius: 12px; font-size: 16px; font-weight: 700;
+            cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px;
+            margin-top: 10px; box-shadow: 0 4px 15px rgba(244, 185, 66, 0.3);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+
+        .btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(244, 185, 66, 0.5); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .btn-secondary { background: transparent; border: 2px solid var(--primary-yellow); color: var(--primary-yellow); margin-top: 15px; }
+        .btn-secondary:hover { background: rgba(244, 185, 66, 0.1); }
+
+        .success-state { display: none; text-align: center; animation: fadeIn 0.5s ease; }
+        .success-state.show { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        .success-icon { font-size: 64px; margin-bottom: 20px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+
+        .success-state h2 { font-size: 24px; margin-bottom: 15px; color: var(--success-green); }
+        .success-state p { opacity: 0.8; line-height: 1.6; margin-bottom: 25px; }
+
+        .phone-preview {
+            background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-dark); border-radius: 16px;
+            padding: 20px; margin: 25px 0; text-align: left; position: relative;
+        }
+
+        body.light-mode .phone-preview { background: rgba(0, 0, 0, 0.05); border-color: var(--border-light); }
+
+        .phone-header { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--primary-yellow); margin-bottom: 10px; font-weight: 600; }
+
+        .phone-screen {
+            background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 14px; line-height: 1.4;
+            border-left: 3px solid var(--success-green);
+        }
+
+        body.light-mode .phone-screen { background: rgba(255, 255, 255, 0.8); color: #1a1a1f; }
+
+        .safety-prefix { color: var(--primary-yellow); font-weight: 700; }
+
+        .security-footer {
+            margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-dark);
+            text-align: center; font-size: 12px; opacity: 0.6;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+
+        body.light-mode .security-footer { border-top-color: var(--border-light); }
+
+        body.light-mode .spam-notice { background: rgba(244, 185, 66, 0.03); border-color: var(--border-light); }
+
+        .spinner {
+            width: 20px; height: 20px; border: 3px solid rgba(10, 10, 15, 0.3);
+            border-radius: 50%; border-top-color: #0a0a0f;
+            animation: spin 1s ease-in-out infinite; display: none;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .btn.loading .spinner { display: inline-block; }
+        .btn.loading .btn-text { display: none; }
+
+        .meeting-cta {
+            background: rgba(244, 185, 66, 0.1); border: 1px solid var(--border-dark);
+            border-radius: 12px; padding: 20px; margin-top: 25px; text-align: center;
+        }
+
+        body.light-mode .meeting-cta { background: rgba(244, 185, 66, 0.05); border-color: var(--border-light); }
+
+        .meeting-cta h3 { font-size: 18px; margin-bottom: 10px; color: var(--primary-yellow); }
+        .meeting-cta p { font-size: 14px; margin-bottom: 15px; opacity: 0.8; }
+
+        .calendly-link { color: var(--primary-yellow); text-decoration: none; font-weight: 600; border-bottom: 1px solid var(--primary-yellow); padding-bottom: 2px; transition: all 0.3s; }
+        .calendly-link:hover { opacity: 0.8; }
+
+        @media (max-width: 480px) { .card { padding: 30px 20px; } .card-header h1 { font-size: 24px; } }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="logo-container">
-      <div class="logo-icon"><div class="shield"></div></div>
-      <div style="font-size: 24px; font-weight: 800;">Mobile<span style="color: var(--primary-yellow);">Objex</span></div>
-    </div>
+    <div class="bg-grid"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
 
-    <div class="card" id="verificationForm">
-      <div class="card-header">
-        <h1>Experience Secure Messaging</h1>
-        <p>Register to receive a verified secure message.</p>
-      </div>
-      <form id="secureForm" onsubmit="handleSecureSubmit(event)">
-        <div class="form-group">
-          <label class="form-label">Mobile Number *</label>
-          <input type="tel" class="form-input" id="phone" placeholder="(555) 000-0000" required maxlength="14">
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon" id="themeIcon">🌙</span>
+        <span id="themeText">Dark</span>
+    </button>
+
+    <div class="container">
+        <div class="logo-container">
+            <div class="logo-icon"><div class="shield"></div></div>
+            <div class="logo-text">Mobile<span>Objex</span></div>
+            <div class="tagline">Secure Mobile Messaging</div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Your Safe Key *</label>
-          <input type="text" class="form-input" id="safetyCode" placeholder="e.g., Alpha1" required minlength="4" maxlength="6">
+
+        <!-- Input Form -->
+        <div class="card" id="verificationForm">
+            <div class="card-header">
+                <div class="badge">
+                    <span>🛡️</span>
+                    <span>Secure Access</span>
+                </div>
+                <h1>Experience Secure Messaging</h1>
+                <p>Register your mobile number to receive a verified secure message with your personal Safe Key prefix.</p>
+            </div>
+
+            <form id="secureForm" onsubmit="handleSecureSubmit(event)">
+                <div class="form-group">
+                    <label class="form-label">Mobile Number *</label>
+                    <input type="tel" class="form-input" id="phone" placeholder="(555) 000-0000" required maxlength="14">
+                    <span class="hint">Enter your US mobile number to receive the secure message</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Your Safe Key *</label>
+                    <input type="text" class="form-input" id="safetyCode" placeholder="e.g., Alpha1" required minlength="4" maxlength="6">
+                    <span class="hint">Create a 4-6 character code to see how it prefixes your message</span>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">
+                    <span class="spinner"></span>
+                    <span class="btn-text">📱 Send Secure Message</span>
+                </button>
+            </form>
+
+            <div class="security-footer">
+                <span>🛡️</span>
+                <span>End-to-end encrypted • Direct secure access</span>
+            </div>
         </div>
-        <button type="submit" class="btn" id="submitBtn">Send Secure Message</button>
-      </form>
+
+       <!-- Success State -->
+        <div class="card success-state" id="successState">
+            <div class="success-icon">✅</div>
+            <h2>Message Sent Successfully</h2>
+            <p>Check your phone! You've received a secure message demonstrating how Mobile Objex verifies legitimate communications with Safe Key prefixing.</p>
+            
+            <!-- Spam Folder Notice -->
+            <div class="spam-notice" style="background: rgba(244, 185, 66, 0.05); border: 1px solid var(--border-dark); border-radius: 12px; padding: 16px; margin: 20px 0; text-align: left;">
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                    <span style="font-size: 20px;">📧</span>
+                    <div>
+                        <strong style="color: var(--primary-yellow); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Didn't receive the message?</strong>
+                        <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.8; line-height: 1.4;">If you did not receive the text message, please check your spam folder.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="phone-preview">
+                <div class="phone-header">
+                    <span>📱</span>
+                    <span>MESSAGE PREVIEW</span>
+                </div>
+                <div class="phone-screen" id="messagePreview">
+                    <span class="safety-prefix" id="previewCode">[Your Safe Key]</span> 
+                    This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications and stops scams before they reach consumers.
+                </div>
+            </div>
+
+            <div class="meeting-cta">
+                <h3>Interested in Learning More?</h3>
+                <p>See how Mobile Objex can protect your organization's mobile communications.</p>
+                <a href="https://calendly.com/mobile-objex" target="_blank" class="calendly-link">Schedule a Meeting →</a>
+            </div>
+
+            <button class="btn btn-secondary" onclick="resetForm()" style="margin-top: 20px;">
+                Send Another Message
+            </button>
+
+            <div class="security-footer">
+                <span>🔒</span>
+                <span>Message delivered securely via Mobile Objex</span>
+            </div>
+        </div>
     </div>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
+    authDomain: "mobile-objex.firebaseapp.com",
+    projectId: "mobile-objex",
+    storageBucket: "mobile-objex.firebasestorage.app",
+    messagingSenderId: "875499185931",
+    appId: "1:875499185931:web:6f90c12f6a69649065640e"
+  };
 
-    <div class="card success-state" id="successState">
-      <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
-      <h2 style="color: #34c759;">Message Sent!</h2>
-      <p>Check your phone now.</p>
-    </div>
-  </div>
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  
+  // TEXTBELT API KEY
+  const TEXTBELT_KEY = 'd962e201060d47930e6cda695e3c68b402a5e136YfyGtQBeCPrDHzcFCNfCDF1NO';
 
-  <script>
-    const firebaseConfig = { apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw", authDomain: "mobile-objex.firebaseapp.com", projectId: "mobile-objex", storageBucket: "mobile-objex.firebasestorage.app", messagingSenderId: "875499185931", appId: "1:875499185931:web:6f90c12f6a69649065640e" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const TEXTBELT_KEY = 'd962e201060d47930e6cda695e3c68b402a5e136YfyGtQBeCPrDHzcFCNfCDF1NO';
+  function normalizeUSPhoneToE164(raw) {
+    const digits = String(raw || "").replace(/\D/g, "");
+    if (digits.length === 10) return "+1" + digits;
+    if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+    if (String(raw).trim().startsWith("+") && digits.length >= 10) return "+" + digits;
+    return null;
+  }
 
-    function normalizeUSPhoneToE164(raw) {
-      const digits = String(raw || "").replace(/\D/g, "");
-      if (digits.length === 10) return "+1" + digits;
-      if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
-      return null;
+  document.getElementById('phone').addEventListener('input', function (e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 0) {
+      if (value.length <= 3) value = '(' + value;
+      else if (value.length <= 6) value = '(' + value.slice(0, 3) + ') ' + value.slice(3);
+      else value = '(' + value.slice(0, 3) + ') ' + value.slice(3, 6) + '-' + value.slice(6, 10);
+    }
+    e.target.value = value;
+  });
+
+  async function handleSecureSubmit(e) {
+    e.preventDefault();
+
+    const phoneRaw = document.getElementById("phone").value.trim();
+    const safetyCode = document.getElementById("safetyCode").value.trim();
+    const btn = document.getElementById("submitBtn");
+
+    const phone = normalizeUSPhoneToE164(phoneRaw);
+    if (!phone) {
+      alert("Enter a valid US phone number.");
+      return;
     }
 
-    document.getElementById('phone').addEventListener('input', function (e) {
-      let val = e.target.value.replace(/\D/g, '');
-      if (val.length > 0) {
-        if (val.length <= 3) val = '(' + val;
-        else if (val.length <= 6) val = '(' + val.slice(0,3) + ') ' + val.slice(3);
-        else val = '(' + val.slice(0,3) + ') ' + val.slice(3,6) + '-' + val.slice(6,10);
-      }
-      e.target.value = val;
-    });
-
-    async function handleSecureSubmit(e) {
-      e.preventDefault();
-      const phoneRaw = document.getElementById("phone").value.trim();
-      const safetyCode = document.getElementById("safetyCode").value.trim();
-      const btn = document.getElementById("submitBtn");
-      
-      const phone = normalizeUSPhoneToE164(phoneRaw);
-      if (!phone) { alert("Invalid phone"); return; }
-      if (safetyCode.length < 4 || safetyCode.length > 6) { alert("Code must be 4-6 chars"); return; }
-      
-      btn.disabled = true;
-      btn.textContent = "Sending...";
-      
-      const message = `${safetyCode} This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications.`;
-      
-      try {
-        // ACTIVATE FIRST: https://cors-anywhere.herokuapp.com/corsdemo
-        const response = await fetch('https://cors-anywhere.herokuapp.com/https://textbelt.com/text', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-          body: JSON.stringify({ phone, message, key: TEXTBELT_KEY })
-        });
-        
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
-        
-        document.getElementById("verificationForm").style.display = "none";
-        document.getElementById("successState").classList.add("show");
-        
-        await db.collection("demo_sends").add({
-          phone, safetyCode, timestamp: firebase.firestore.FieldValue.serverTimestamp(), status: 'sent'
-        });
-      } catch (err) {
-        console.error(err);
-        alert("SMS Error: " + err.message + "\n\nDid you activate the proxy at cors-anywhere.herokuapp.com/corsdemo?");
-        btn.disabled = false;
-        btn.textContent = "Send Secure Message";
-      }
+    if (safetyCode.length < 4 || safetyCode.length > 6) {
+      alert("Safety code must be 4–6 characters.");
+      return;
     }
-  </script>
+
+    btn.classList.add("loading");
+    btn.disabled = true;
+
+    const messageContent = "This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications and stops scams before they reach consumers.";
+    const fullMessage = `${safetyCode} ${messageContent}`;
+
+    try {
+      // FIXED: Using cors-anywhere with activation
+      const response = await fetch('https://cors-anywhere.herokuapp.com/https://textbelt.com/text', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+          phone: phone,
+          message: fullMessage,
+          key: TEXTBELT_KEY
+        })
+      });
+      
+      const data = await response.json();
+      console.log("Textbelt response:", data);
+
+      if (!data.success) {
+        throw new Error(data.error || 'SMS failed');
+      }
+
+      document.getElementById("verificationForm").style.display = "none";
+      document.getElementById("successState").classList.add("show");
+      document.getElementById("previewCode").textContent = safetyCode;
+
+      // Log to Firestore
+      await db.collection("demo_sends").add({
+        phone: phone,
+        safetyCode: safetyCode,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        status: 'sent'
+      });
+
+    } catch (err) {
+      console.error("SMS ERROR:", err);
+      alert("Failed to send: " + (err.message || "Unknown error"));
+      btn.classList.remove("loading");
+      btn.disabled = false;
+    }
+  }
+
+  function resetForm() {
+    document.getElementById('secureForm').reset();
+    document.getElementById('verificationForm').style.display = 'block';
+    document.getElementById('successState').classList.remove('show');
+    document.getElementById('submitBtn').classList.remove('loading');
+    document.getElementById('submitBtn').disabled = false;
+  }
+
+  function toggleTheme() {
+    const body = document.body;
+    const icon = document.getElementById('themeIcon');
+    const text = document.getElementById('themeText');
+
+    body.classList.toggle('light-mode');
+
+    if (body.classList.contains('light-mode')) {
+      icon.textContent = '☀️';
+      text.textContent = 'Light';
+      localStorage.setItem('theme', 'light');
+    } else {
+      icon.textContent = '🌙';
+      text.textContent = 'Dark';
+      localStorage.setItem('theme', 'dark');
+    }
+  }
+
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-mode');
+    document.getElementById('themeIcon').textContent = '☀️';
+    document.getElementById('themeText').textContent = 'Light';
+  }
+
+  window.handleSecureSubmit = handleSecureSubmit;
+  window.resetForm = resetForm;
+  window.toggleTheme = toggleTheme;
+</script>
+
 </body>
 </html>
