@@ -2,12 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mobile Objex | Secure Verification</title>
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
     <style>
         :root {
             --primary-yellow: #F4B942;
@@ -25,9 +23,10 @@
             --input-bg-dark: rgba(10, 10, 15, 0.6);
             --input-bg-light: rgba(245, 245, 247, 0.8);
             --success-green: #34c759;
+            --error-red: #ff3b30;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -41,6 +40,7 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
+            -webkit-font-smoothing: antialiased;
         }
 
         body.light-mode { background: var(--bg-light); color: var(--text-light); }
@@ -84,6 +84,7 @@
             transition: all 0.3s ease; backdrop-filter: blur(10px); color: var(--text-dark);
             font-family: inherit; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            touch-action: manipulation;
         }
 
         body.light-mode .theme-toggle { background: var(--card-light); border-color: var(--border-light); color: var(--text-light); }
@@ -149,10 +150,12 @@
             width: 100%; padding: 16px 20px; border: 2px solid var(--border-dark); border-radius: 12px;
             background: var(--input-bg-dark); color: var(--text-dark); font-size: 16px; font-family: inherit;
             transition: all 0.3s ease; outline: none;
+            -webkit-appearance: none; appearance: none;
         }
 
         body.light-mode .form-input { background: var(--input-bg-light); color: var(--text-light); border-color: var(--border-light); }
         .form-input:focus { border-color: var(--primary-yellow); box-shadow: 0 0 0 4px var(--accent-glow); transform: translateY(-2px); }
+        .form-input.error { border-color: var(--error-red); box-shadow: 0 0 0 4px rgba(255, 59, 48, 0.2); }
 
         .hint { font-size: 12px; opacity: 0.6; margin-top: 6px; display: block; }
 
@@ -162,10 +165,27 @@
             cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px;
             margin-top: 10px; box-shadow: 0 4px 15px rgba(244, 185, 66, 0.3);
             display: flex; align-items: center; justify-content: center; gap: 10px;
+            touch-action: manipulation;
+            position: relative;
+            overflow: hidden;
         }
 
         .btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(244, 185, 66, 0.5); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: rotate(30deg);
+            transition: all 0.6s;
+        }
+        
+        .btn:hover::after { left: 100%; }
 
         .btn-secondary { background: transparent; border: 2px solid var(--primary-yellow); color: var(--primary-yellow); margin-top: 15px; }
         .btn-secondary:hover { background: rgba(244, 185, 66, 0.1); }
@@ -207,8 +227,6 @@
 
         body.light-mode .security-footer { border-top-color: var(--border-light); }
 
-        body.light-mode .spam-notice { background: rgba(244, 185, 66, 0.03); border-color: var(--border-light); }
-
         .spinner {
             width: 20px; height: 20px; border: 3px solid rgba(10, 10, 15, 0.3);
             border-radius: 50%; border-top-color: #0a0a0f;
@@ -219,6 +237,29 @@
 
         .btn.loading .spinner { display: inline-block; }
         .btn.loading .btn-text { display: none; }
+        
+        .error-message {
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            color: #ff3b30;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .error-message.show { display: flex; animation: shake 0.5s ease; }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        body.light-mode .spam-notice { background: rgba(244, 185, 66, 0.03); border-color: var(--border-light); }
 
         .meeting-cta {
             background: rgba(244, 185, 66, 0.1); border: 1px solid var(--border-dark);
@@ -233,7 +274,11 @@
         .calendly-link { color: var(--primary-yellow); text-decoration: none; font-weight: 600; border-bottom: 1px solid var(--primary-yellow); padding-bottom: 2px; transition: all 0.3s; }
         .calendly-link:hover { opacity: 0.8; }
 
-        @media (max-width: 480px) { .card { padding: 30px 20px; } .card-header h1 { font-size: 24px; } }
+        @media (max-width: 480px) { 
+            .card { padding: 30px 20px; } 
+            .card-header h1 { font-size: 24px; } 
+            .theme-toggle { top: 10px; right: 10px; padding: 6px 12px; font-size: 11px; }
+        }
     </style>
 </head>
 <body>
@@ -253,7 +298,6 @@
             <div class="tagline">Secure Mobile Messaging</div>
         </div>
 
-        <!-- Input Form -->
         <div class="card" id="verificationForm">
             <div class="card-header">
                 <div class="badge">
@@ -264,17 +308,22 @@
                 <p>Register your mobile number to receive a verified secure message with your personal Safe Key prefix.</p>
             </div>
 
+            <div class="error-message" id="errorMsg">
+                <span>⚠️</span>
+                <span id="errorText">Something went wrong. Please try again.</span>
+            </div>
+
             <form id="secureForm" onsubmit="handleSecureSubmit(event)">
                 <div class="form-group">
                     <label class="form-label">Mobile Number *</label>
-                    <input type="tel" class="form-input" id="phone" placeholder="(555) 000-0000" required maxlength="14">
-                    <span class="hint">Enter your US mobile number to receive the secure message</span>
+                    <input type="tel" class="form-input" id="phone" placeholder="(555) 000-0000" required maxlength="14" inputmode="numeric" autocomplete="tel">
+                    <span class="hint">Enter your US mobile number</span>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Your Safe Key *</label>
-                    <input type="text" class="form-input" id="safetyCode" placeholder="e.g., Alpha1" required minlength="4" maxlength="6">
-                    <span class="hint">Create a 4-6 character code to see how it prefixes your message</span>
+                    <input type="text" class="form-input" id="safetyCode" placeholder="e.g., Alpha1" required minlength="4" maxlength="6" autocomplete="off">
+                    <span class="hint">4-6 character code for message verification</span>
                 </div>
 
                 <button type="submit" class="btn" id="submitBtn">
@@ -289,19 +338,17 @@
             </div>
         </div>
 
-       <!-- Success State -->
         <div class="card success-state" id="successState">
             <div class="success-icon">✅</div>
             <h2>Message Sent Successfully</h2>
-            <p>Check your phone! You've received a secure message demonstrating how Mobile Objex verifies legitimate communications with Safe Key prefixing.</p>
+            <p>Check your phone! You've received a secure message demonstrating how Mobile Objex verifies legitimate communications.</p>
             
-            <!-- Spam Folder Notice -->
             <div class="spam-notice" style="background: rgba(244, 185, 66, 0.05); border: 1px solid var(--border-dark); border-radius: 12px; padding: 16px; margin: 20px 0; text-align: left;">
                 <div style="display: flex; align-items: flex-start; gap: 12px;">
                     <span style="font-size: 20px;">📧</span>
                     <div>
-                        <strong style="color: var(--primary-yellow); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Didn't receive the message?</strong>
-                        <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.8; line-height: 1.4;">If you did not receive the text message, please check your spam folder.</p>
+                        <strong style="color: var(--primary-yellow); font-size: 13px; text-transform: uppercase;">Didn't receive it?</strong>
+                        <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.8; line-height: 1.4;">Check spam/junk folders. SMS delivery may take 30-60 seconds.</p>
                     </div>
                 </div>
             </div>
@@ -313,13 +360,13 @@
                 </div>
                 <div class="phone-screen" id="messagePreview">
                     <span class="safety-prefix" id="previewCode">[Your Safe Key]</span> 
-                    This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications and stops scams before they reach consumers.
+                    This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications.
                 </div>
             </div>
 
             <div class="meeting-cta">
                 <h3>Interested in Learning More?</h3>
-                <p>See how Mobile Objex can protect your organization's mobile communications.</p>
+                <p>See how Mobile Objex can protect your organization's communications.</p>
                 <a href="https://calendly.com/mobile-objex" target="_blank" class="calendly-link">Schedule a Meeting →</a>
             </div>
 
@@ -329,11 +376,13 @@
 
             <div class="security-footer">
                 <span>🔒</span>
-                <span>Message delivered securely via Mobile Objex</span>
+                <span>Delivered securely via Mobile Objex</span>
             </div>
         </div>
     </div>
+
 <script>
+  // Firebase Config
   const firebaseConfig = {
     apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
     authDomain: "mobile-objex.firebaseapp.com",
@@ -346,8 +395,11 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   
-  // TEXTBELT API KEY
+  // Textbelt API Key
   const TEXTBELT_KEY = 'd962e201060d47930e6cda695e3c68b402a5e136YfyGtQBeCPrDHzcFCNfCDF1NO';
+
+  // YOUR CLOUDFLARE WORKER URL - This makes it work on mobile!
+  const WORKER_URL = 'https://mobileobjex-sms-proxy.roshanpatwari002.workers.dev';
 
   function normalizeUSPhoneToE164(raw) {
     const digits = String(raw || "").replace(/\D/g, "");
@@ -357,6 +409,7 @@
     return null;
   }
 
+  // Phone formatting
   document.getElementById('phone').addEventListener('input', function (e) {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length > 0) {
@@ -367,71 +420,89 @@
     e.target.value = value;
   });
 
-    async function handleSecureSubmit(e) {
+  async function sendSMS(phone, message) {
+    // Use Cloudflare Worker (works on all devices including mobile)
+    const response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: phone,
+        message: message,
+        key: TEXTBELT_KEY
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Network error: ' + response.status);
+    }
+    
+    return await response.json();
+  }
+
+  async function handleSecureSubmit(e) {
     e.preventDefault();
 
     const phoneRaw = document.getElementById("phone").value.trim();
     const safetyCode = document.getElementById("safetyCode").value.trim();
     const btn = document.getElementById("submitBtn");
+    const errorMsg = document.getElementById("errorMsg");
+    const errorText = document.getElementById("errorText");
 
+    // Reset error
+    errorMsg.classList.remove('show');
+    document.getElementById("phone").classList.remove('error');
+
+    // Validation
     const phone = normalizeUSPhoneToE164(phoneRaw);
     if (!phone) {
-      alert("Enter a valid US phone number.");
+      errorText.textContent = "Please enter a valid US phone number (10 digits).";
+      errorMsg.classList.add('show');
+      document.getElementById("phone").classList.add('error');
+      document.getElementById("phone").focus();
       return;
     }
 
     if (safetyCode.length < 4 || safetyCode.length > 6) {
-      alert("Safety code must be 4–6 characters.");
+      errorText.textContent = "Safety code must be 4-6 characters.";
+      errorMsg.classList.add('show');
+      document.getElementById("safetyCode").focus();
       return;
     }
 
+    // UI Loading state
     btn.classList.add("loading");
     btn.disabled = true;
 
     const messageContent = "This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications and stops scams before they reach consumers.";
-    const fullMessage = `${safetyCode} ${messageContent}`;
 
     try {
-      // FIXED: Using corsproxy.io - works without activation
-          const response = await fetch('https://cors-anywhere.herokuapp.com/https://textbelt.com/text', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          phone: phone,
-          message: fullMessage,
-          key: TEXTBELT_KEY
-        })
-      });
+      const result = await sendSMS(phone, `${safetyCode} ${messageContent}`);
       
-      // Check if response is valid before parsing
-      if (!response.ok) {
-        throw new Error('Network error: ' + response.status);
+      if (!result.success) {
+        throw new Error(result.error || 'SMS failed');
       }
       
-      const data = await response.json();
-      console.log("Textbelt response:", data);
-
-      if (!data.success) {
-        throw new Error(data.error || 'SMS failed');
-      }
-
-      document.getElementById("verificationForm").style.display = "none";
-      document.getElementById("successState").classList.add("show");
-      document.getElementById("previewCode").textContent = safetyCode;
-
-      // Log to Firestore
-      await db.collection("demo_sends").add({
+      // Log to Firebase (non-blocking)
+      db.collection("demo_sends").add({
         phone: phone,
         safetyCode: safetyCode,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         status: 'sent'
-      });
+      }).catch(err => console.log("Firebase log failed:", err));
+
+      // Show success
+      document.getElementById("verificationForm").style.display = "none";
+      document.getElementById("successState").classList.add("show");
+      document.getElementById("previewCode").textContent = safetyCode;
+      
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
     } catch (err) {
       console.error("SMS ERROR:", err);
-      alert("Failed to send: " + (err.message || "Unknown error"));
+      errorText.textContent = "Failed to send SMS. Please check your internet connection and try again.";
+      errorMsg.classList.add('show');
+      
       btn.classList.remove("loading");
       btn.disabled = false;
     }
@@ -443,6 +514,7 @@
     document.getElementById('successState').classList.remove('show');
     document.getElementById('submitBtn').classList.remove('loading');
     document.getElementById('submitBtn').disabled = false;
+    document.getElementById('errorMsg').classList.remove('show');
   }
 
   function toggleTheme() {
@@ -463,6 +535,7 @@
     }
   }
 
+  // Init theme
   const savedTheme = localStorage.getItem('theme');
   if (savedTheme === 'light') {
     document.body.classList.add('light-mode');
@@ -470,10 +543,10 @@
     document.getElementById('themeText').textContent = 'Light';
   }
 
+  // Expose to window
   window.handleSecureSubmit = handleSecureSubmit;
   window.resetForm = resetForm;
   window.toggleTheme = toggleTheme;
 </script>
-
 </body>
 </html>
