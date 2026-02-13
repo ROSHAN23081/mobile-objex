@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mobile Objex | Secure Verification</title>
-    <!-- Firebase SDK (Optional - for analytics only) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
@@ -583,17 +583,17 @@
         </div>
 
         <!-- Input Form -->
-        <div class="card" id="demoForm">
+        <div class="card" id="verificationForm">
             <div class="card-header">
                 <div class="badge">
                     <span>🛡️</span>
                     <span>Secure Access</span>
                 </div>
-                <h1>Secure Message Verification</h1>
-                <p>Register your mobile number to receive verified secure messages with your personal Safe Key prefix.</p>
+                <h1>Experience Secure Messaging</h1>
+                <p>Register your mobile number to receive a verified secure message with your personal Safe Key prefix.</p>
             </div>
 
-            <form id="investorForm" onsubmit="handleDemoSubmit(event)">
+            <form id="secureForm" onsubmit="handleSecureSubmit(event)">
                 <div class="form-group">
                     <label class="form-label">Mobile Number *</label>
                     <input type="tel" class="form-input" id="phone" placeholder="(555) 000-0000" required maxlength="14">
@@ -674,27 +674,16 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
+  // Fixed URL (removed trailing space)
   const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
 
-  function normalizePhone(input) {
-    const raw = (input || "").trim();
-    if (!raw) return "";
-    if (raw.startsWith("+")) return "+" + raw.slice(1).replace(/[^\d]/g, "");
-    const digits = raw.replace(/[^\d]/g, "");
+  function normalizeUSPhoneToE164(raw) {
+    const digits = String(raw || "").replace(/\D/g, "");
     if (digits.length === 10) return "+1" + digits;
     if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
-    return "+" + digits;
+    if (String(raw).trim().startsWith("+") && digits.length >= 10) return "+" + digits;
+    return null;
   }
-    function normalizeUSPhoneToE164(raw) {
-  const digits = String(raw || "").replace(/\D/g, "");
-  // US numbers only (since your UI formats US style)
-  if (digits.length === 10) return "+1" + digits;
-  if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
-  // If user pasted +E164 already
-  if (String(raw).trim().startsWith("+") && digits.length >= 10) return "+" + digits;
-  return null;
-}
-
 
   async function postSendSMS(toE164, text) {
     const res = await fetch(SENDSMS_URL, {
@@ -708,7 +697,7 @@
     try { data = JSON.parse(raw); } catch { data = { raw }; }
 
     if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
-    return data; // { ok: true, ... }
+    return data;
   }
 
   // Phone formatting (UI)
@@ -722,7 +711,7 @@
     e.target.value = value;
   });
 
- async function handleDemoSubmit(e) {
+ async function handleSecureSubmit(e) {
   e.preventDefault();
 
   const phoneRaw = document.getElementById("phone").value.trim();
@@ -745,28 +734,29 @@
   const fullMessage = `${safetyCode} ${messageContent}`;
 
   try {
-      const sendSMS = firebase.app().functions("us-central1").httpsCallable("sendSMSCallable");
-    const result = await sendSMS({ phone, message: fullMessage });
+    // Using HTTP endpoint for maximum reliability
+    const result = await postSendSMS(phone, fullMessage);
+    
+    console.log("SECURE SMS RESULT:", JSON.stringify(result, null, 2));
 
-    console.log("DEMO SMS RESULT:", JSON.stringify(result.data, null, 2));
-
-    if (!result.data || result.data.success !== true) {
-      throw new Error(result.data?.error || "SMS provider rejected the request");
+    if (!result || (result.success !== true && result.ok !== true)) {
+      throw new Error(result?.error || "SMS provider rejected the request");
     }
 
-    document.getElementById("demoForm").style.display = "none";
+    document.getElementById("verificationForm").style.display = "none";
     document.getElementById("successState").classList.add("show");
     document.getElementById("previewCode").textContent = safetyCode;
   } catch (err) {
-    console.error("DEMO SMS ERROR:", err);
+    console.error("SECURE SMS ERROR:", err);
     alert("Failed to send: " + (err.message || "Unknown error"));
     btn.classList.remove("loading");
     btn.disabled = false;
   }
 }
+
   function resetForm() {
-    document.getElementById('investorForm').reset();
-    document.getElementById('demoForm').style.display = 'block';
+    document.getElementById('secureForm').reset();
+    document.getElementById('verificationForm').style.display = 'block';
     document.getElementById('successState').classList.remove('show');
     document.getElementById('submitBtn').classList.remove('loading');
     document.getElementById('submitBtn').disabled = false;
@@ -801,7 +791,7 @@
   }
 
   // expose to HTML inline handlers
-  window.handleDemoSubmit = handleDemoSubmit;
+  window.handleSecureSubmit = handleSecureSubmit;
   window.resetForm = resetForm;
   window.toggleTheme = toggleTheme;
 </script>
