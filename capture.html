@@ -681,34 +681,24 @@ const firebaseConfig = {
 
         // Send confirmation SMS - integrates with your existing SMS Composer App
 async function sendConfirmationSMS(phone, safetyCode) {
-    const TWILIO_ACCOUNT_SID = 'AC0c04028915541dd9988f07618d9ab46d';
-    const TWILIO_API_KEY_SID = 'SK30d6b99e936092338ed54ae25d4c6e03';
-    const TWILIO_API_KEY_SECRET = '7n59GnOkwgxgCaVu6C9UzEFXyWzOAubP';
-    const TWILIO_PHONE_NUMBER = '+17602847447'; 
-    
+    // STRIP ALL FORMATTING - keep only digits
     const cleanPhone = phone.replace(/\D/g, '');
-    const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
     
-    // Ensure E.164 format
-    let formattedPhone = cleanPhone;
-    if (!cleanPhone.startsWith('+')) {
-        formattedPhone = '+1' + cleanPhone;
-    }
+    const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
+    const TEXTBELT_KEY = 'b88f3bc5c28e511ec230fa8b46c2289634e0604dIpPA4CpHdZu853Iddph9p2gI1';
     
     try {
-        await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
+        await fetch('https://textbelt.com/text', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'Basic ' + btoa(`${TWILIO_API_KEY_SID}:${TWILIO_API_KEY_SECRET}`)
-            },
-            body: `To=${encodeURIComponent(formattedPhone)}&From=${encodeURIComponent(TWILIO_PHONE_NUMBER)}&Body=${encodeURIComponent(message)}`
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `phone=${encodeURIComponent(cleanPhone)}&message=${encodeURIComponent(message)}&key=${TEXTBELT_KEY}`
         });
-        console.log('Confirmation SMS sent to:', formattedPhone);
+        console.log('Confirmation SMS sent to:', cleanPhone);
     } catch (error) {
         console.error('SMS error:', error);
     }
 }
+
 
         // Initialize
         validateSession().then(valid => {
