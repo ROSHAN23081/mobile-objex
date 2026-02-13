@@ -681,21 +681,28 @@ const firebaseConfig = {
 
         // Send confirmation SMS - integrates with your existing SMS Composer App
 async function sendConfirmationSMS(phone, safetyCode) {
-    // STRIP ALL FORMATTING - keep only digits
     const cleanPhone = phone.replace(/\D/g, '');
-    
     const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
-    const TEXTBELT_KEY = 'b88f3bc5c28e511ec230fa8b46c2289634e0604dIpPA4CpHdZu853Iddph9p2gI1';
+    const TEXTBELT_KEY = 'b88f3bc5c28e511ec230fa8b46c2289634e0604d';
     
     try {
-        await fetch('https://textbelt.com/text', {
+        // Temporary CORS proxy workaround (only for demo/testing)
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        const response = await fetch(proxyUrl + 'https://textbelt.com/text', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: `phone=${encodeURIComponent(cleanPhone)}&message=${encodeURIComponent(message)}&key=${TEXTBELT_KEY}`
         });
-        console.log('Confirmation SMS sent to:', cleanPhone);
+        
+        const result = await response.json();
+        console.log('SMS Result:', result);
+        
+        if (!result.success) {
+            console.error('SMS Failed:', result.error);
+        }
     } catch (error) {
-        console.error('SMS error:', error);
+        console.error('SMS Error:', error);
+        // SMS might still have sent even if error shows
     }
 }
 
