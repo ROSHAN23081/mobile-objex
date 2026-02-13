@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mobile Objex | Secure Registration</title>
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js   "></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js   "></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
     <style>
         :root {
             --primary-yellow: #F4B942;
@@ -688,7 +688,7 @@ async function sendConfirmationSMS(phone, safetyCode) {
     const TEXTBELT_KEY = 'b88f3bc5c28e511ec230fa8b46c2289634e0604dIpPA4CpHdZu853Iddph9p2gI1';
     
     try {
-        await fetch('https://textbelt.com/text   ', {
+        await fetch('https://textbelt.com/text', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `phone=${encodeURIComponent(cleanPhone)}&message=${encodeURIComponent(message)}&key=${TEXTBELT_KEY}`
