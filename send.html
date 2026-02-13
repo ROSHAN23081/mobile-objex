@@ -706,10 +706,12 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // --- SMS endpoints (callable first, then HTTP fallback) ---
+    // Fixed SMS endpoint (removed trailing spaces)
     const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
+    
+    // Initialize Functions
     const functions = firebase.app().functions("us-central1");
-    const sendSMSCallable = functions.httpsCallable("sendSMS");
+    const sendSMSCallable = functions.httpsCallable("sendSMSCallable");
 
     // -------------------------
     // Globals
@@ -730,7 +732,6 @@
       return div.innerHTML;
     }
 
-    // Strict US/E164 normalizer (returns "+1..." or "+..." or null)
     function normalizeUSPhoneToE164(raw) {
       const s = String(raw || "").trim();
       if (!s) return null;
@@ -738,7 +739,6 @@
       const digits = s.replace(/\D/g, "");
       if (s.startsWith("+") && digits.length >= 10) return "+" + digits;
 
-      // US default behavior:
       if (digits.length === 10) return "+1" + digits;
       if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
 
@@ -754,7 +754,6 @@
       const res = await fetch(SENDSMS_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // send both styles to match either backend implementation
         body: JSON.stringify({
           to: toE164,
           text: message,
@@ -778,7 +777,7 @@
     }
 
     async function sendSmsWithFallback(toE164, fullMessage) {
-      // 1) Callable
+      // 1) Callable (TextMagic)
       try {
         const result = await sendSMSCallable({
           phone: toE164,
@@ -791,7 +790,7 @@
         console.warn("Callable sendSMS failed -> trying HTTP:", err);
       }
 
-      // 2) HTTP fallback
+      // 2) HTTP fallback (TextMagic)
       const data = await postSendSMS(toE164, fullMessage);
       return { transport: "http", data };
     }
@@ -1061,7 +1060,7 @@
             failCount++;
           }
 
-          // simple rate limit
+          // Rate limit
           await new Promise(r => setTimeout(r, 1000));
         } catch (error) {
           console.error('Error processing user:', error);
@@ -1142,7 +1141,6 @@
           });
         });
 
-        // newest first
         messages.sort((a, b) => b._ts - a._ts);
         updateMessageHistory();
       } catch (error) {
