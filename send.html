@@ -1205,6 +1205,17 @@ const normalizeUSPhoneToE164 = normalizePhone;
   // ✅ Your deployed HTTP function URL
   const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
 
+       function normalizeUSPhoneToE164(raw) {
+  const digits = String(raw || "").replace(/\D/g, "");
+  // US numbers only (since your UI formats US style)
+  if (digits.length === 10) return "+1" + digits;
+  if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+  // If user pasted +E164 already
+  if (String(raw).trim().startsWith("+") && digits.length >= 10) return "+" + digits;
+  return null;
+}
+
+
   // Global variables
   let currentSession = null;
   let sessionId = null;
