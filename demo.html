@@ -347,9 +347,9 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   
-  // THIS FIXES THE CORS ERROR - Call Cloud Function instead of Textbelt directly
+  // Initialize Cloud Functions
   const functions = firebase.app().functions("us-central1");
-  const sendSMS = functions.httpsCallable("sendSMS");
+  const sendSMSCallable = functions.httpsCallable("sendSMS");
 
   function normalizeUSPhoneToE164(raw) {
     const digits = String(raw || "").replace(/\D/g, "");
@@ -359,6 +359,7 @@
     return null;
   }
 
+  // Phone formatting (UI)
   document.getElementById('phone').addEventListener('input', function (e) {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length > 0) {
@@ -376,7 +377,12 @@
     const safetyCode = document.getElementById("safetyCode").value.trim();
     const btn = document.getElementById("submitBtn");
 
+    console.log("Raw phone:", phoneRaw);
+    console.log("Safety code:", safetyCode);
+
     const phone = normalizeUSPhoneToE164(phoneRaw);
+    console.log("Normalized phone:", phone);
+
     if (!phone) {
       alert("Enter a valid US phone number.");
       return;
@@ -393,14 +399,16 @@
     const messageContent = "This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications and stops scams before they reach consumers.";
     const fullMessage = `${safetyCode} ${messageContent}`;
 
+    console.log("Sending data:", { phone: phone, message: fullMessage.substring(0, 50) + '...' });
+
     try {
-      // CALL CLOUD FUNCTION (No CORS issues!)
-      const result = await sendSMS({ 
+      // Call Cloud Function
+      const result = await sendSMSCallable({ 
         phone: phone, 
         message: fullMessage 
       });
       
-      console.log("SMS RESULT:", result.data);
+      console.log("SUCCESS:", result.data);
 
       document.getElementById("verificationForm").style.display = "none";
       document.getElementById("successState").classList.add("show");
@@ -415,7 +423,11 @@
       });
 
     } catch (err) {
-      console.error("SMS ERROR:", err);
+      console.error("DETAILED ERROR:", err);
+      console.error("Error code:", err.code);
+      console.error("Error message:", err.message);
+      console.error("Error details:", err.details);
+      
       alert("Failed to send: " + (err.message || "Unknown error"));
       btn.classList.remove("loading");
       btn.disabled = false;
