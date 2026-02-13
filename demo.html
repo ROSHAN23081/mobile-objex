@@ -7,6 +7,7 @@
     <!-- Firebase SDK (Optional - for analytics only) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
     <style>
         :root {
             --primary-yellow: #F4B942;
@@ -711,70 +712,48 @@
     e.target.value = value;
   });
 
-  async function handleDemoSubmit(e) {
-    e.preventDefault();
+ async function handleDemoSubmit(e) {
+  e.preventDefault();
 
-    const phoneDisplay = document.getElementById('phone').value.trim();
-    const safetyCode = document.getElementById('safetyCode').value.trim();
-    const btn = document.getElementById('submitBtn');
+  const phoneRaw = document.getElementById("phone").value.trim();
+  const safetyCode = document.getElementById("safetyCode").value.trim();
+  const btn = document.getElementById("submitBtn");
 
-    if (!phoneDisplay || !safetyCode) {
-      alert('Please fill in all fields');
-      return;
-    }
+  const phone = normalizeUSPhoneToE164(phoneRaw);
+  if (!phone) return alert("Enter a valid US phone number.");
 
-    if (safetyCode.length < 4 || safetyCode.length > 6) {
-      alert('Safety code must be between 4 and 6 characters.');
-      document.getElementById('safetyCode').focus();
-      return;
-    }
-
-    const phoneE164 = normalizePhone(phoneDisplay);
-    if (!phoneE164 || phoneE164.length < 8) {
-      alert("Phone number is not valid. Try again.");
-      return;
-    }
-
-    btn.classList.add('loading');
-    btn.disabled = true;
-
-    const messageContent =
-      `This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications and stops scams before they reach consumers.`;
-    const fullMessage = `${safetyCode} ${messageContent}`;
-
-    try {
-      const result = await postSendSMS(phoneE164, fullMessage);
-
-      if (!result.ok) throw new Error(result.error || "SMS failed");
-
-      // optional analytics log
-      try {
-        await db.collection('verification_demos').add({
-          phoneDisplay,
-          phoneE164,
-          safetyCode,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-          userAgent: navigator.userAgent,
-          messageId: result.messageId || null
-        });
-      } catch (e) {
-        console.log('Analytics logging skipped');
-      }
-
-      // Show success UI
-      document.getElementById('demoForm').style.display = 'none';
-      document.getElementById('successState').classList.add('show');
-      document.getElementById('previewCode').textContent = safetyCode;
-      document.title = 'Message Sent | Mobile Objex';
-
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to send message: ' + error.message);
-      btn.classList.remove('loading');
-      btn.disabled = false;
-    }
+  if (safetyCode.length < 4 || safetyCode.length > 6) {
+    alert("Safety code must be 4–6 characters.");
+    return;
   }
 
+  btn.classList.add("loading");
+  btn.disabled = true;
+
+  const messageContent =
+    "This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications and stops scams before they reach consumers.";
+  const fullMessage = `${safetyCode} ${messageContent}`;
+
+  try {
+    const sendSMS = firebase.app().functions("us-central1").httpsCallable("sendSMS");
+    const result = await sendSMS({ phone, message: fullMessage });
+
+    console.log("DEMO SMS RESULT:", JSON.stringify(result.data, null, 2));
+
+    if (!result.data || result.data.success !== true) {
+      throw new Error(result.data?.error || "SMS provider rejected the request");
+    }
+
+    document.getElementById("demoForm").style.display = "none";
+    document.getElementById("successState").classList.add("show");
+    document.getElementById("previewCode").textContent = safetyCode;
+  } catch (err) {
+    console.error("DEMO SMS ERROR:", err);
+    alert("Failed to send: " + (err.message || "Unknown error"));
+    btn.classList.remove("loading");
+    btn.disabled = false;
+  }
+}
   function resetForm() {
     document.getElementById('investorForm').reset();
     document.getElementById('demoForm').style.display = 'block';
