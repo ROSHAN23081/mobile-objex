@@ -385,8 +385,8 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Fixed URL (removed trailing space)
-    const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
+    // TEXTBELT CONFIGURATION - Replace with your API key
+    const TEXTBELT_API_KEY = 'd962e201060d47930e6cda695e3c68b402a5e136YfyGtQBeCPrDHzcFCNfCDF1NO'; 
 
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get("s");
@@ -406,26 +406,30 @@
       return null;
     }
 
-    async function postSendSMS(toE164, text) {
-      const res = await fetch(SENDSMS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: toE164, text })
-      });
-
-      const raw = await res.text();
-      let data = {};
-      try { data = JSON.parse(raw); } catch { data = { raw }; }
-
-      if (!res.ok) {
-        const msg = data.error || data.message || `HTTP ${res.status}`;
-        const err = new Error(msg);
-        err.status = res.status;
-        err.data = data;
-        throw err;
+    // Textbelt SMS Sender
+    async function sendSMS(phone, message) {
+      try {
+        const response = await fetch('https://textbelt.com/text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: phone,
+            message: message,
+            key: TEXTBELT_API_KEY
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'SMS failed to send');
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('SMS Error:', error);
+        throw error;
       }
-
-      return data;
     }
 
     async function validateSession() {
@@ -485,14 +489,8 @@
 
       console.log("SENDING CONFIRMATION SMS:", { to: phoneE164, text: message });
 
-      const result = await postSendSMS(phoneE164, message);
+      const result = await sendSMS(phoneE164, message);
       console.log("CONFIRMATION SMS RESULT:", result);
-
-      const ok = result && (result.ok === true || result.success === true || result.status === "ok");
-      if (!ok) {
-        console.warn("SMS response not clearly OK:", result);
-      }
-
       return true;
     }
 
