@@ -683,8 +683,7 @@ const firebaseConfig = {
 async function sendConfirmationSMS(phone, safetyCode) {
   const message = `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
   
-  // DEBUG LINE
-  console.log('DATA BEING SENT TO FUNCTION:', { phone, message });
+  console.log('DATA BEING SENT:', { phone, message });
   
   try {
     const sendSMS = firebase.functions().httpsCallable('sendSMS');
@@ -700,8 +699,7 @@ async function sendConfirmationSMS(phone, safetyCode) {
     console.error('ERROR:', error);
     return false;
   }
-}
-        // Initialize
+}    // Initialize
         validateSession().then(valid => {
             if (valid) {
                 setupPhoneFormatting();
