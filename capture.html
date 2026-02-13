@@ -566,11 +566,10 @@ const firebaseConfig = {
                 if (!sessionData.active || sessionData.expiresAt.toMillis() < now.toMillis()) {
                     showInvalidSession();
                     return false;
-                }
-                
+                } 
                 sessionValid = true;
                 return true;
-            } catch (error) {
+             catch (error) {
                 console.error("Error validating session:", error);
                 showInvalidSession();
                 return false;
