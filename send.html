@@ -1195,6 +1195,12 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
+       // ✅ Always call the deployed function in the correct region
+const sendSMS = firebase.app().functions("us-central1").httpsCallable("sendSMS");
+
+// ✅ alias so your existing code works
+const normalizeUSPhoneToE164 = normalizePhone;
+
 
   // ✅ Your deployed HTTP function URL
   const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
@@ -1466,41 +1472,70 @@
         if (!userDoc.exists) continue;
 
         const user = userDoc.data();
+const toE164 = user.phoneE164 || normalizeUSPhoneToE164(user.phone);
+if (!toE164 || toE164.length < 11) {
+  console.warn("Skipping invalid phone:", user.phone);
+  failCount++;
+  continue;
+}
 
-        // ✅ Use phoneE164 if available, else normalize display phone
-        const to = user.phoneE164 || normalizePhone(user.phoneDisplay || user.phone);
-        if (!to || to.length < 8) throw new Error("Invalid phone format");
+const fullMessage = `${user.safetyCode} ${content}`;
 
-        const fullMessage = `${user.safetyCode} ${content}`;
+try {
+  // ✅ THIS is where your snippet goes
+  const result = await sendSMS({
+    phone: toE164,
+    message: fullMessage
+  });
 
-        try {
-          const apiResult = await postSendSMS(to, fullMessage);
+  console.log("SEND RESULT:", JSON.stringify(result.data, null, 2));
 
-          if (apiResult.ok) {
-            await db.collection('messages').add({
-              sessionId: sessionId,
-              mo_username: currentSession.mo_username || currentSession.username,
-              recipient: user.phoneDisplay || user.phone,
-              recipientE164: to,
-              safetyCode: user.safetyCode,
-              content: content,
-              fullMessage: fullMessage,
-              timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-              status: 'sent',
-              messageId: apiResult.messageId || apiResult.id || null
-            });
+  const ok = result.data && (result.data.success === true || result.data.ok === true);
 
-            await db.collection('users').doc(userId).update({
-              status: 'sent',
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+  if (ok) {
+    await db.collection('messages').add({
+      sessionId: sessionId,
+      mo_username: currentSession.mo_username || currentSession.username,
+      recipient: user.phoneDisplay || user.phone,
+      recipientE164: toE164,
+      safetyCode: user.safetyCode,
+      content: content,
+      fullMessage: fullMessage,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      status: 'sent',
+      messageId: result.data.messageId || result.data.id || null
+    });
 
-            successCount++;
-          } else {
-            throw new Error(apiResult.error || "SMS failed");
-          }
-        } catch (smsError) {
-          console.error('SMS Failed:', smsError);
+    await db.collection('users').doc(userId).update({
+      status: 'sent',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      phoneE164: toE164 // ✅ saves normalized number for future sends
+    });
+
+    successCount++;
+  } else {
+    throw new Error(result.data?.error || result.data?.message || "SMS failed");
+  }
+
+} catch (smsError) {
+  console.error('SMS Failed:', smsError);
+
+  await db.collection('messages').add({
+    sessionId: sessionId,
+    mo_username: currentSession.mo_username || currentSession.username,
+    recipient: user.phoneDisplay || user.phone,
+    recipientE164: toE164,
+    safetyCode: user.safetyCode,
+    content: content,
+    fullMessage: fullMessage,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    status: 'failed',
+    error: smsError.message || String(smsError)
+  });
+
+  failCount++;
+}
+
 
           // Optional: log failure too
           await db.collection('messages').add({
