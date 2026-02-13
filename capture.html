@@ -385,7 +385,7 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Your deployed HTTP Function URL
+    // Fixed URL (removed trailing space)
     const SENDSMS_URL = "https://us-central1-mobile-objex.cloudfunctions.net/sendSMS";
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -398,7 +398,6 @@
       return div.innerHTML;
     }
 
-    // Strict US E.164 normalization (prevents bad sends)
     function normalizeUSPhoneToE164(raw) {
       const digits = String(raw || "").replace(/\D/g, "");
       if (digits.length === 10) return "+1" + digits;
@@ -426,7 +425,7 @@
         throw err;
       }
 
-      return data; // expected: { ok:true } or { success:true } etc.
+      return data;
     }
 
     async function validateSession() {
@@ -484,15 +483,13 @@
       const message =
         `${safetyCode} Thank you for registering with Mobile Objex. Your secure messaging is now active.`;
 
-      console.log("SENDING HTTP SMS:", { to: phoneE164, text: message });
+      console.log("SENDING CONFIRMATION SMS:", { to: phoneE164, text: message });
 
       const result = await postSendSMS(phoneE164, message);
-      console.log("HTTP SMS RESULT:", result);
+      console.log("CONFIRMATION SMS RESULT:", result);
 
-      // accept common success shapes
       const ok = result && (result.ok === true || result.success === true || result.status === "ok");
       if (!ok) {
-        // Not fatal for UI, but surface it
         console.warn("SMS response not clearly OK:", result);
       }
 
@@ -550,9 +547,9 @@
         try {
           const userData = {
             sessionId: sessionId,
-            phone: phone,            // formatted display
-            phoneDisplay: phone,     // same for UI
-            phoneE164: phoneE164,    // normalized for sending
+            phone: phone,
+            phoneDisplay: phone,
+            phoneE164: phoneE164,
             safetyCode: safetyCode,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             status: "newly entered",
@@ -568,12 +565,11 @@
           document.getElementById("registrationForm").style.display = "none";
           document.getElementById("successState").classList.add("show");
 
-          // Send SMS after showing success (so UI feels instant)
+          // Send SMS after showing success
           try {
             await sendConfirmationSMS(phoneE164, safetyCode);
           } catch (smsErr) {
             console.error("Confirmation SMS failed:", smsErr);
-            // show a gentle message (doesn't block registration)
             alert("Registration saved, but SMS could not be delivered right now. Please try again later.");
           }
 
