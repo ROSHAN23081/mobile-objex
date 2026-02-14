@@ -443,7 +443,12 @@
     e.preventDefault();
 
     const phoneRaw = document.getElementById("phone").value.trim();
-    const safetyCode = document.getElementById("safetyCode").value.trim();
+    const safetyCodeRaw = document.getElementById("safetyCode").value.trim();
+    
+    // Remove any existing # characters to avoid duplication, then wrap with ##
+    const safetyCode = safetyCodeRaw.replace(/#/g, '');
+    const formattedSafetyCode = `##${safetyCode}##`;
+    
     const btn = document.getElementById("submitBtn");
     const errorMsg = document.getElementById("errorMsg");
     const errorText = document.getElementById("errorText");
@@ -476,7 +481,7 @@
     const messageContent = "This is how verified messages from Mobile Objex appear. The Safe Key prefix authenticates legitimate communications and stops scams before they reach consumers.";
 
     try {
-      const result = await sendSMS(phone, `${safetyCode} ${messageContent}`);
+      const result = await sendSMS(phone, `${formattedSafetyCode} ${messageContent}`);
       
       if (!result.success) {
         throw new Error(result.error || 'SMS failed');
@@ -485,7 +490,7 @@
       // Log to Firebase (non-blocking)
       db.collection("demo_sends").add({
         phone: phone,
-        safetyCode: safetyCode,
+        safetyCode: formattedSafetyCode,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         status: 'sent'
       }).catch(err => console.log("Firebase log failed:", err));
@@ -493,7 +498,7 @@
       // Show success
       document.getElementById("verificationForm").style.display = "none";
       document.getElementById("successState").classList.add("show");
-      document.getElementById("previewCode").textContent = safetyCode;
+      document.getElementById("previewCode").textContent = formattedSafetyCode;
       
       // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
