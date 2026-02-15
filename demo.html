@@ -1,11 +1,11 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mobile Objex | Secure Verification</title>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js "></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js "></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
     <style>
         :root {
             --primary-yellow: #F4B942;
@@ -367,7 +367,7 @@
             <div class="meeting-cta">
                 <h3>Interested in Learning More?</h3>
                 <p>See how Mobile Objex can protect your organization's communications.</p>
-                <a href="https://calendly.com/mobile-objex " target="_blank" class="calendly-link">Schedule a Meeting →</a>
+                <a href="https://calendly.com/mobile-objex" target="_blank" class="calendly-link">Schedule a Meeting →</a>
             </div>
 
             <button class="btn btn-secondary" onclick="resetForm()" style="margin-top: 20px;">
@@ -399,7 +399,7 @@
   const TEXTBELT_KEY = 'd962e201060d47930e6cda695e3c68b402a5e136YfyGtQBeCPrDHzcFCNfCDF1NO';
 
   // YOUR CLOUDFLARE WORKER URL - This makes it work on mobile!
-  const WORKER_URL = 'https://mobileobjex-sms-proxy.roshanpatwari002.workers.dev ';
+  const WORKER_URL = 'https://mobileobjex-sms-proxy.roshanpatwari002.workers.dev';
 
   function normalizeUSPhoneToE164(raw) {
     const digits = String(raw || "").replace(/\D/g, "");
@@ -447,7 +447,7 @@
     
     // Remove any existing # characters to avoid duplication, then wrap with ##
     const safetyCode = safetyCodeRaw.replace(/#/g, '');
-    const formattedSafetyCode = `VzM##${safetyCode}##`;
+    const formattedSafetyCode = `##${safetyCode}##`;
     
     const btn = document.getElementById("submitBtn");
     const errorMsg = document.getElementById("errorMsg");
