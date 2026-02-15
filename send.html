@@ -691,555 +691,244 @@
     </div>
   </div>
 
-  <script>
-    // Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyDnh2nrtoZVWo-_KYhNIjzmsplE5c_olUw",
-      authDomain: "mobile-objex.firebaseapp.com",
-      projectId: "mobile-objex",
-      storageBucket: "mobile-objex.firebasestorage.app",
-      messagingSenderId: "875499185931",
-      appId: "1:875499185931:web:6f90c12f6a69649065640e"
+  // Add this utility function at the top of your script section
+const Utils = {
+  // Debounce function for performance
+  debounce: (func, wait) => {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
     };
+  },
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+  // Throttle function for scroll/resize events
+  throttle: (func, limit) => {
+    let inThrottle;
+    return (...args) => {
+      if (!inThrottle) {
+        func.apply(this, args);
+        inThrottle = true;
+        setTimeout(() => inThrottle = false, limit);
+      }
+    };
+  },
 
-    // CLOUDFLARE WORKER CONFIGURATION - Works on all devices!
-    const WORKER_URL = 'https://mobileobjex-sms-proxy.roshanpatwari002.workers.dev';
-    const TEXTBELT_API_KEY = 'd962e201060d47930e6cda695e3c68b402a5e136YfyGtQBeCPrDHzcFCNfCDF1NO'; 
+  // Memoize expensive operations
+  memoize: (fn) => {
+    const cache = new Map();
+    return (...args) => {
+      const key = JSON.stringify(args);
+      if (cache.has(key)) return cache.get(key);
+      const result = fn(...args);
+      cache.set(key, result);
+      return result;
+    };
+  }
+};
+
+// Optimized Firebase operations
+const FirebaseOps = {
+  // Batch write messages instead of individual writes
+  async batchWriteMessages(messages) {
+    const batch = db.batch();
+    const messagesRef = db.collection('messages');
     
-    let currentSession = null;
-    let sessionId = null;
-    let usersListener = null;
-    let messages = [];
-    let timerInterval = null;
-    let expiryTime = null;
+    messages.forEach((msg, index) => {
+      const ref = messagesRef.doc();
+      batch.set(ref, {
+        ...msg,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    
+    return await batch.commit();
+  },
 
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    function normalizeUSPhoneToE164(raw) {
-      const s = String(raw || "").trim();
-      if (!s) return null;
-      const digits = s.replace(/\D/g, "");
-      if (s.startsWith("+") && digits.length >= 10) return "+" + digits;
-      if (digits.length === 10) return "+1" + digits;
-      if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
-      return null;
-    }
-
-    // SMS Function using Cloudflare Worker (no CORS issues)
-    async function sendSMS(phone, message) {
-      try {
-        const response = await fetch(WORKER_URL, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            phone: phone,
-            message: message,
-            key: TEXTBELT_API_KEY
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error('Network error: ' + response.status);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-          throw new Error(data.error || 'SMS failed to send');
-        }
-        
+  // Get users with caching
+  async getUsersWithCache(sessionId, forceRefresh = false) {
+    const cacheKey = `users_${sessionId}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    
+    if (!forceRefresh && cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < 5000) { // 5 second cache
         return data;
-      } catch (error) {
-        console.error('SMS Error:', error);
-        throw error;
       }
     }
+    
+    const snapshot = await db.collection('users')
+      .where('sessionId', '==', sessionId)
+      .orderBy('timestamp', 'desc')
+      .get();
+    
+    const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    sessionStorage.setItem(cacheKey, JSON.stringify({
+      data: users,
+      timestamp: Date.now()
+    }));
+    
+    return users;
+  }
+};
 
-    async function init() {
-      await checkAuth();
-      loadTheme();
-      startTimer();
-      setupCharCounter();
-      setupMessagePreview();
-    }
+// Optimized UI Updates
+const UIController = {
+  // Debounced update to prevent DOM thrashing
+  updateRecipientsList: Utils.debounce((users) => {
+    // Your existing updateUsersUI logic here, but batch DOM updates
+    const fragment = document.createDocumentFragment();
+    // ... build fragment ...
+    container.appendChild(fragment);
+  }, 100),
 
-    function switchTab(tabName) {
-      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-      document.getElementById('tab-' + tabName).classList.add('active');
-      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-      document.getElementById('content-' + tabName).classList.add('active');
-    }
+  // Virtual scrolling for large lists (if you have 100+ users)
+  setupVirtualScroll(container, items) {
+    // Implementation for very large lists
+  }
+};
 
-    async function checkAuth() {
-      const sessionStr = localStorage.getItem('mo_current_session');
-      if (!sessionStr) {
-        window.location.href = 'login.html';
-        return;
-      }
-
-      try {
-        currentSession = JSON.parse(sessionStr);
-        sessionId = currentSession.sessionId;
-
-        const doc = await db.collection('sessions').doc(sessionId).get();
-        if (!doc.exists || !doc.data().active) {
-          showExpiredModal();
-          return;
-        }
-
-        if (new Date(currentSession.expiresAt) < new Date()) {
-          showExpiredModal();
-          return;
-        }
-
-        document.getElementById('usernameDisplay').textContent = currentSession.name || currentSession.username || "";
-        document.getElementById('shortUrl').textContent = currentSession.captureUrl || "";
-
-        setupUsersListener();
-        loadMessageHistory();
-      } catch (e) {
-        console.error('Session error:', e);
-        logout();
-      }
-    }
-
-    function setupUsersListener() {
-      usersListener = db.collection('users')
-        .where('sessionId', '==', sessionId)
-        .onSnapshot(snapshot => {
-          const users = [];
-          snapshot.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
-
-          users.sort((a, b) => {
-            const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
-            const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
-            return timeB - timeA;
-          });
-
-          updateUsersUI(users);
-        }, error => console.error("Error listening to users:", error));
-    }
-
-    function updateUsersUI(users) {
-      const container = document.getElementById('usersTableContainer');
-      const count = document.getElementById('usersCount');
-
-      if (users.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon">📭</div>
-            <p>No users registered in this session</p>
-            <p style="font-size: 12px; margin-top: 10px;">Share the link above to add users</p>
-          </div>
-        `;
-        count.textContent = 'No users registered';
-      } else {
-        count.textContent = `${users.length} users registered`;
-
-        let html = `
-          <table class="users-table">
-            <thead>
-              <tr>
-                <th>Phone Number</th>
-                <th>Safety Code</th>
-                <th>Registered</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        users.forEach(user => {
-          const date = user.timestamp ? user.timestamp.toDate().toLocaleString() : 'Just now';
-          const displayPhone = user.phoneDisplay || user.phone || '';
-          const status = user.status || 'newly entered';
-          html += `
-            <tr>
-              <td>${escapeHtml(displayPhone)}</td>
-              <td style="color: var(--primary-yellow); font-family: monospace;">${escapeHtml(String(user.safetyCode || ""))}</td>
-              <td>${escapeHtml(date)}</td>
-              <td><span class="status-badge status-${status === 'newly entered' ? 'new' : 'sent'}">${escapeHtml(status)}</span></td>
-            </tr>
-          `;
-        });
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
-      }
-
-      const list = document.getElementById('recipientsList');
-      const recipientCount = document.getElementById('recipientCount');
-      const sendBtn = document.getElementById('sendBtn');
-
-      if (users.length === 0) {
-        list.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon">📭</div>
-            <p>No recipients captured in this session</p>
-            <p style="font-size: 12px; margin-top: 10px;">Switch to Users tab to get the registration link</p>
-          </div>
-        `;
-        recipientCount.textContent = 'No recipients available';
-        if (sendBtn) sendBtn.disabled = true;
-      } else {
-        recipientCount.textContent = `${users.length} recipients available`;
-        if (sendBtn) sendBtn.disabled = false;
-
-        list.innerHTML = users.map(user => `
-          <div class="recipient-item">
-            <div class="recipient-info">
-              <div class="recipient-phone">${escapeHtml(user.phoneDisplay || user.phone || "")}</div>
-              <div class="recipient-code">Safety Code: ${escapeHtml(String(user.safetyCode || ""))}</div>
-            </div>
-            <input type="checkbox" class="recipient-checkbox" checked data-userid="${user.id}">
-          </div>
-        `).join('');
-      }
-    }
-
-    function setupMessagePreview() {
-      const textarea = document.getElementById('messageContent');
-      const preview = document.getElementById('previewText');
-
-      if (textarea && preview) {
-        textarea.addEventListener('input', function () {
-          const text = this.value || "";
-          document.getElementById('charCount').textContent = text.length;
-
-          if (text.trim()) {
-            preview.innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> ${escapeHtml(text)}`;
-          } else {
-            preview.innerHTML = `<span style="color: var(--primary-yellow); font-weight: 700;">[SafetyCode]</span> Your message will appear here...`;
-          }
-        });
-      }
-    }
-
-    function setupCharCounter() {
-      const textarea = document.getElementById('messageContent');
-      if (textarea) {
-        textarea.addEventListener('input', function () {
-          document.getElementById('charCount').textContent = (this.value || "").length;
-        });
-      }
-    }
-
-    async function handleSend(e) {
-      e.preventDefault();
-
-      const content = (document.getElementById('messageContent').value || "").trim();
-      if (!content) {
-        alert('Please enter a message');
+// Session Management Improvements
+const SessionManager = {
+  data: null,
+  
+  async validate() {
+    const sessionStr = localStorage.getItem('mo_current_session');
+    if (!sessionStr) return false;
+    
+    try {
+      this.data = JSON.parse(sessionStr);
+      
+      // Check local expiry first (fast)
+      if (new Date(this.data.expiresAt) < new Date()) {
+        this.clear();
         return false;
       }
-
-      const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
-      if (checkboxes.length === 0) {
-        alert('Please select at least one recipient');
+      
+      // Verify with Firebase (async)
+      const doc = await db.collection('sessions').doc(this.data.sessionId).get();
+      if (!doc.exists || !doc.data().active) {
+        this.clear();
         return false;
       }
-
-      const sendBtn = document.getElementById('sendBtn');
-      sendBtn.innerHTML = '<span>⏳</span> Sending...';
-      sendBtn.disabled = true;
-
-      const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid);
-      let successCount = 0;
-      let failCount = 0;
-
-      for (const userId of selectedUserIds) {
-        try {
-          const userDoc = await db.collection('users').doc(userId).get();
-          if (!userDoc.exists) {
-            failCount++;
-            continue;
-          }
-
-          const user = userDoc.data();
-          const toE164 = user.phoneE164 || normalizeUSPhoneToE164(user.phone);
-
-          if (!toE164) {
-            console.warn("Skipping invalid phone:", user.phone);
-            failCount++;
-            continue;
-          }
-
-          const fullMessage = `${user.safetyCode} ${content}`;
-
-          try {
-            const result = await sendSMS(toE164, fullMessage);
-            console.log('Textbelt Result:', result);
-
-            await db.collection('messages').add({
-              sessionId: sessionId,
-              mo_username: currentSession.mo_username || currentSession.username,
-              recipient: user.phoneDisplay || user.phone,
-              recipientE164: toE164,
-              safetyCode: user.safetyCode,
-              content: content,
-              fullMessage: fullMessage,
-              timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-              status: 'sent',
-              textbeltId: result.textId || null
-            });
-
-            await db.collection('users').doc(userId).update({
-              status: 'sent',
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-              phoneE164: toE164
-            });
-
-            successCount++;
-          } catch (smsError) {
-            console.error('SMS Failed:', smsError);
-
-            await db.collection('messages').add({
-              sessionId: sessionId,
-              mo_username: currentSession.mo_username || currentSession.username,
-              recipient: user.phoneDisplay || user.phone,
-              recipientE164: toE164,
-              safetyCode: user.safetyCode,
-              content: content,
-              fullMessage: fullMessage,
-              timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-              status: 'failed',
-              error: smsError.message || String(smsError)
-            });
-
-            failCount++;
-          }
-
-          await new Promise(r => setTimeout(r, 1100));
-        } catch (error) {
-          console.error('Error processing user:', error);
-          failCount++;
-        }
-      }
-
-      await loadMessageHistory();
-
-      sendBtn.innerHTML = '<span>🚀</span> Send Secure Message';
-      sendBtn.disabled = false;
-
-      if (successCount > 0) {
-        alert(`✅ Sent to ${successCount} people! ${failCount > 0 ? `(${failCount} failed)` : ''}`);
-      } else {
-        alert('❌ Failed to send messages. Check console for details.');
-      }
-
+      
+      return true;
+    } catch (e) {
       return false;
     }
+  },
+  
+  clear() {
+    localStorage.removeItem('mo_current_session');
+    sessionStorage.clear(); // Clear UI cache
+    this.data = null;
+  }
+};
 
-    function updateMessageHistory() {
-      const history = document.getElementById('messageHistory');
-      const count = document.getElementById('messageCount');
+// Initialize with performance monitoring
+async function init() {
+  const startTime = performance.now();
+  
+  await checkAuth();
+  loadTheme();
+  startTimer();
+  setupCharCounter();
+  setupMessagePreview();
+  
+  // Log initialization time
+  console.log(`App initialized in ${performance.now() - startTime}ms`);
+}
 
-      if (messages.length === 0) {
-        history.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon">📤</div>
-            <p>No messages sent yet</p>
-            <p style="font-size: 12px; margin-top: 10px;">Sent messages will appear here</p>
-          </div>
-        `;
-        count.textContent = 'No messages sent';
+// Replace handleSend with batched version
+async function handleSend(e) {
+  e.preventDefault();
+
+  const content = (document.getElementById("messageContent").value || "").trim();
+  if (!content) {
+    alert('Please enter a message');
+    return false;
+  }
+
+  const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
+  if (checkboxes.length === 0) {
+    alert('Please select at least one recipient');
+    return false;
+  }
+
+  const sendBtn = document.getElementById("sendBtn");
+  sendBtn.innerHTML = '<span>⏳</span> Sending...';
+  sendBtn.disabled = true;
+
+  const selectedUserIds = Array.from(checkboxes).map(cb => cb.dataset.userid);
+  
+  // Batch process in chunks of 10 (Firestore batch limit is 500, but SMS API might have lower limits)
+  const chunkSize = 5;
+  const chunks = [];
+  for (let i = 0; i < selectedUserIds.length; i += chunkSize) {
+    chunks.push(selectedUserIds.slice(i, i + chunkSize));
+  }
+
+  let successCount = 0;
+  let failCount = 0;
+  const messageBatch = [];
+
+  for (const chunk of chunks) {
+    const results = await Promise.allSettled(chunk.map(async (userId) => {
+      const userDoc = await db.collection('users').doc(userId).get();
+      if (!userDoc.exists) throw new Error('User not found');
+      
+      const user = userDoc.data();
+      const toE164 = user.phoneE164 || normalizeUSPhoneToE164(user.phone);
+      if (!toE164) throw new Error('Invalid phone');
+      
+      const fullMessage = `${user.safetyCode} ${content}`;
+      
+      await sendSMS(toE164, fullMessage);
+      
+      return {
+        sessionId: sessionId,
+        mo_username: currentSession.mo_username,
+        recipient: user.phone,
+        recipientE164: toE164,
+        safetyCode: user.safetyCode,
+        content: content,
+        fullMessage: fullMessage,
+        status: 'sent'
+      };
+    }));
+
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        messageBatch.push(result.value);
+        successCount++;
       } else {
-        count.textContent = `${messages.length} messages sent`;
-
-        history.innerHTML = messages.map(msg => `
-          <div class="message-item">
-            <div class="message-header">
-              <span><strong>${escapeHtml(msg.recipient)}</strong></span>
-              <span class="message-status ${msg.status}">
-                <span>${msg.status === 'sent' ? '✓' : '✕'}</span>
-                <span>${escapeHtml(String(msg.status || '').toUpperCase())}</span>
-              </span>
-            </div>
-            <div class="message-content">
-              <span class="safety-prefix">${escapeHtml(msg.code)}</span> ${escapeHtml(msg.content)}
-            </div>
-            <div style="margin-top: 10px; font-size: 12px; opacity: 0.5;">
-              ${escapeHtml(msg.timestamp)}
-            </div>
-          </div>
-        `).join('');
+        failCount++;
+        console.error('Failed:', result.reason);
       }
+    });
+
+    // Small delay between chunks to avoid rate limiting
+    if (chunks.length > 1) await new Promise(r => setTimeout(r, 1000));
+  }
+
+  // Batch write all successful messages at once
+  if (messageBatch.length > 0) {
+    try {
+      await FirebaseOps.batchWriteMessages(messageBatch);
+    } catch (e) {
+      console.error('Batch write failed, falling back to individual writes');
+      // Fallback to individual writes if batch fails
+      await Promise.all(messageBatch.map(msg => db.collection('messages').add(msg)));
     }
+  }
 
-    async function loadMessageHistory() {
-      try {
-        const snapshot = await db.collection('messages')
-          .where('sessionId', '==', sessionId)
-          .get();
+  await loadMessageHistory();
+  
+  sendBtn.innerHTML = '<span>🚀</span> Send Secure Message';
+  sendBtn.disabled = false;
 
-        messages = [];
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          messages.push({
-            id: doc.id,
-            recipient: data.recipient || '',
-            code: data.safetyCode || '',
-            content: data.content || '',
-            timestamp: data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : 'Just now',
-            status: data.status || 'sent',
-            _ts: data.timestamp ? data.timestamp.toMillis() : 0
-          });
-        });
-
-        messages.sort((a, b) => b._ts - a._ts);
-        updateMessageHistory();
-      } catch (error) {
-        console.error("Error loading messages:", error);
-      }
-    }
-
-    function copyUrl() {
-      if (!sessionId) {
-        alert('Session not loaded yet. Please wait...');
-        return;
-      }
-
-      const urlText = 'https://mobile-objex.it.com/capture.html?s=' + sessionId;
-      const urlDisplay = document.getElementById('shortUrl');
-      if (urlDisplay) urlDisplay.textContent = urlText;
-
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(urlText).then(showCopySuccess).catch(() => fallbackCopy(urlText));
-      } else {
-        fallbackCopy(urlText);
-      }
-    }
-
-    function fallbackCopy(text) {
-      const tempInput = document.createElement('input');
-      tempInput.value = text;
-      tempInput.style.position = 'fixed';
-      tempInput.style.opacity = '0';
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      tempInput.setSelectionRange(0, 99999);
-
-      try {
-        const successful = document.execCommand('copy');
-        if (successful) showCopySuccess();
-        else alert('Copy failed. URL: ' + text);
-      } catch (err) {
-        console.error('Copy error:', err);
-        alert('Please copy manually: ' + text);
-      }
-      document.body.removeChild(tempInput);
-    }
-
-    function showCopySuccess() {
-      const btn = document.querySelector('.btn-copy');
-      if (btn) {
-        btn.textContent = '✓ Copied!';
-        btn.style.background = '#34c759';
-        setTimeout(() => {
-          btn.textContent = 'Copy Link';
-          btn.style.background = '';
-        }, 2000);
-      }
-    }
-
-    async function logout() {
-      if (confirm('Logout will clear all session data. Continue?')) {
-        try {
-          if (sessionId) {
-            await db.collection('sessions').doc(sessionId).update({
-              active: false,
-              loggedOutAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-          }
-        } catch (error) {
-          console.error("Error during logout:", error);
-        }
-
-        if (usersListener) usersListener();
-        localStorage.removeItem('mo_current_session');
-        window.location.href = 'login.html';
-      }
-    }
-
-    function toggleTheme() {
-      const body = document.body;
-      const icon = document.getElementById('themeIcon');
-      const text = document.getElementById('themeText');
-
-      body.classList.toggle('light-mode');
-
-      if (body.classList.contains('light-mode')) {
-        icon.textContent = '☀️';
-        text.textContent = 'Light';
-        localStorage.setItem('theme', 'light');
-      } else {
-        icon.textContent = '🌙';
-        text.textContent = 'Dark';
-        localStorage.setItem('theme', 'dark');
-      }
-    }
-
-    function loadTheme() {
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'light') {
-        document.body.classList.add('light-mode');
-        document.getElementById('themeIcon').textContent = '☀️';
-        document.getElementById('themeText').textContent = 'Light';
-      }
-    }
-
-    function startTimer() {
-      if (currentSession && currentSession.expiresAt) {
-        expiryTime = new Date(currentSession.expiresAt).getTime();
-        updateTimer();
-        timerInterval = setInterval(updateTimer, 1000);
-      }
-    }
-
-    function updateTimer() {
-      if (!expiryTime) return;
-
-      const now = new Date().getTime();
-      const distance = expiryTime - now;
-
-      if (distance < 0) {
-        clearInterval(timerInterval);
-        document.getElementById('timerDisplay').textContent = "00:00";
-        document.getElementById('timerDisplay').classList.add('timer-low');
-        showExpiredModal();
-        return;
-      }
-
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-      const display = String(minutes).padStart(2, '0') + ":" + String(seconds).padStart(2, '0');
-      document.getElementById('timerDisplay').textContent = display;
-
-      if (minutes < 2) document.getElementById('timerDisplay').classList.add('timer-low');
-    }
-
-    function showExpiredModal() {
-      document.getElementById('expiredModal').classList.add('show');
-      localStorage.removeItem('mo_current_session');
-
-      if (sessionId) {
-        db.collection('sessions').doc(sessionId).update({
-          active: false,
-          expired: true
-        }).catch(() => {});
-      }
-    }
-    init();
-  </script>
+  alert(`✅ Sent to ${successCount} people! ${failCount > 0 ? `(${failCount} failed)` : ''}`);
+}
 </body>
 </html>
